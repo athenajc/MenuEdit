@@ -8,7 +8,194 @@ import webbrowser
 
 from textui import PopMenu, TextLinebar
      
-   
+class TextToken():     
+    def init_py(self):
+        pint = '(?<![\w])(?P<int>(0x[\dabcdefABCDEF]+)|([\d\.\+\-]+))'
+        pint1 = '(?P<int>\d[\d\.e]*)'
+        p = '(?P<ln>\n+)|%s|(?P<word>[\w]+)|(?P<comments>\#[^\n]*)|' % pint
+        p += '(?P<str2>\"[^\"]*\")|(?P<str1>\'[^\']*\')|(?P<op>[\=\+\-\*\/\(\)\.\%\,])'
+        p += '|(?<=class)\s(?P<classname>\w+)'
+        self.pattern = re.compile(p)    
+            
+        keys = 'from|import|def|class|if|else|elif|for|in|then|dict|list|continue|return'
+        keys += '|None|True|False|while|break|pass|with|as|try|except|not|or|and|do|const|local'
+        p1 = pint + '|(?P<key>^%s)' % keys
+        self.pattern1 = re.compile(p1)  
+        
+    def init_txt(self):        
+        p = '(?P<title>^[A-Z][A-Z\s\-\_\:]+)|(?P<function>\w+)\s*(?=\()|(?P<colon>\w.+\:)'
+        p += '|(?P<str1>\'[^\']*\')|(?P<str2>\"[^\"]*\")|(?P<word>[\w]+)'  
+        self.pattern = re.compile(p)
+        
+        keys = 'Class|NAME|DESCRIPTION|PACKAGE\sCONTENTS|CLASSES|Function|Help\son'
+        keys = keys.split('|')
+        p1 = '(?<![\w])(?P<int>[\d\.\+\-]+)|(?P<helpon>^%s)' % keys
+        self.pattern1 = re.compile(p1)  
+            
+    def init_pattern(self):
+        if self.ext == 'txt':
+            self.init_txt()
+        else:
+            self.init_py()  
+        self.init_token_vars()
+            
+    def remove_tags(self, idx1, idx2):        
+        for s in self.tag_names():
+            self.tag_remove(s, idx1, idx2)
+            
+    def init_token_vars(self):                                
+        self.prev_ranges = ()
+        self.tag_list = []    
+        self.line_count = 0        
+               
+    def replace_str(self, text):
+        q = '\"'
+        def reps(s0):
+            if not '\n' in s0:
+                return q + 's' * (len(s0)+4) + q
+            lst = []            
+            for s in s0.splitlines():
+                 n = len(s)
+                 if n > 2:
+                     n -= 2
+                 lst.append(q+'s'*n+q)
+            return '\n'.join(lst)
+                 
+        q3 = '\"\"\"'
+        if q3 in text:               
+            i = 0    
+            lst = []
+            for s in text.split(q3):                              
+                if i == 0:
+                   lst.append(s)
+                else:
+                   s = reps("\"aa" +s+"bb\"")
+                   lst.append(s)
+                i = 1 - i             
+            text = ''.join(lst)
+        text = text.replace('\\\"', '@&').replace('\\\'', '@$') 
+        return text        
+       
+    def do_tag_p(self, tag, p):
+        i1, j1, i2, j2 = p       
+        idx1 = self.get_idx(i1, j1)
+        idx2 = self.get_idx(i2, j2)                
+        self.tag_add(tag, idx1, idx2)
+        
+    def m2tagp(self, m):        
+        p0, p1 = m.span()        
+        tag = m.lastgroup  
+        s = m.group(0)      
+        i, j = self.ln[-1]
+        if tag == 'ln':        
+            self.ln.append((i+len(s), p1))
+            return
+        elif tag == 'word':          
+            m1 = re.fullmatch(self.pattern1, s)
+            if m1 != None:
+                tag = m1.lastgroup
+                #self.msg(m1, m1.lastgroup )  
+        if tag in ['word', 'space']:            
+            return     
+        else:
+            return (tag, i, p0-j, i, p1-j)  
+        
+    def tag_pattern(self, lst, l1, l2):                
+        idx1 = '%d.0' % l1
+        idx2 = '%d.0' % (l2 + 1)
+        self.remove_tags(idx1, idx2)        
+        for item in lst:
+            tag, i, j1, i2, j2 = item
+            if i >= l1 and i <= l2:
+               self.do_tag_p(tag, (i, j1, i2, j2))      
+               
+    def get_tag_list(self, l1, l2, lst=None):
+        if lst == None:
+            lst = self.tag_list
+        lst1 = []
+        for p in lst:
+            i = p[1]
+            if i >= l1 and i <= l2:
+                lst1.append(p)  
+        return lst1    
+                    
+    def create_tag_list(self, text0):    
+        text = self.replace_str(text0)     
+        self.ln = [(1, 0)]
+        self.prev_word = ''  
+        lst = []
+        for m in re.finditer(self.pattern, text):
+            p = self.m2tagp(m)  
+            if p != None: 
+                tag, i1, j1, i2, j2 = p                
+                lst.append(p)
+        return lst              
+        
+    def get_update_range(self, text, n1, n2):        
+        if self.pre_text == '':
+            return 1, n2           
+        l1 = self.get_line_index('current')
+        l2 = self.get_line_index('insert')
+        if l1 > l2:
+            l1, l2 = l2, l1
+        l1 -= 2 
+        l2 += 1
+        if l1 < 1:
+            l1 = 1  
+        lines1 = self.pre_text.splitlines()
+        lines2 = text.splitlines()
+        if lines1[0:l1] != lines2[0:l1]:
+            return 1, n2
+        d = n2 - n1
+        #self.msg('l1, l2', l1, l2, d, len(lines1[l2-d:]), len(lines2[l2:]), lines1[l2-d:] == lines2[l2:])
+        if lines1[l2-d:] == lines2[l2:]:            
+            return l1, l2
+        else:
+            return l1, n2    
+        
+    def get_tag_ranges(self, tag):
+        lst = []
+        tlst = self.tag_ranges(tag)
+        n = len(tlst)
+        for i in range(0, n, 2):
+            p0, p1 = tlst[i], tlst[i+1]
+            s0, s1 = str(p0).split('.')
+            s2, s3 = str(p1).split('.')
+            i1, j1, i2, j2 = int(s0), int(s1), int(s2), int(s3)
+            lst.append((i1, j1, i2, j2))
+        return lst    
+        
+    def dump_tags(self):
+        dct = {}
+        for tag in ('key', 'class', 'classname', 'str1', 'str2', 'int', 'op', 'self', 'comments'):
+            dct[tag] = self.get_tag_ranges(tag)
+        return dct
+        
+    def get_lines_dct(self, text):
+        lines = text.splitlines()
+        lst = []
+        n = len(lines)
+        dct = {}
+        for i, s in enumerate(lines):
+            if s in dct:
+                dct[s].append(i)
+            else:
+                dct[s] = [i]
+        return dct       
+
+    def update_tag(self):        
+        text = self.get_text()
+        if self.pre_text == text:
+            return          
+        n = self.get_line_index('end')
+        l1, l2 = self.get_update_range(text, self.line_count, n)   
+        #print(l1, l2)   
+        lst = self.create_tag_list(text)
+        self.tag_pattern(lst, l1, l2)       
+        self.pre_text = text
+        self.tag_list = lst
+        self.line_count = n          
+       
 #----------------------------------------------------------------------------------------
 class TextBoxText():          
     def set_text(self, text):
@@ -121,6 +308,10 @@ class TextBoxEdit():
             self.modified = True
             self.set_status('Modified', "True")           
             
+    def on_text_changed(self, event):  
+        self.update_tag()
+        #self.linebar.update_lines(self.line_count)        
+        
     def on_keydown(self, event):
         if event.state == 0x14:
             if event.keysym in 'vxz<>':
@@ -142,10 +333,12 @@ class TextBoxEdit():
         
     def on_key_v(self, event):   
         self.delete_text_before_paste()  
+        self.update_set('check')
         
     def on_key_return(self, event):    
         idx = self.index('insert')
         self.insert(idx, self.get_prevline_indent(idx))
+        self.update_set('check')
                 
     def remove_one_tab(self, text):     
         lst = []
@@ -272,7 +465,6 @@ class TextBoxEdit():
            path = os.path.dirname(os.path.realpath(self.filename))
            path = os.path.realpath(path + os.sep + '..')
         os.chdir(path)
-        
         self.msg.puts(path +'/:')
         lst = os.listdir(path)   
         files = []   
@@ -380,7 +572,7 @@ class TextBoxEdit():
     def edit_paste(self):
         self.on_paste()
                 
-class TextBox(tk.Text, TextBoxEdit, TextBoxText, PopMenu):
+class TextBox(tk.Text, TextToken, TextBoxEdit, TextBoxText, PopMenu):
     def __init__(self, master, **kw):
         tk.Text.__init__(self, master, **kw)  
         self.root = None
@@ -425,7 +617,7 @@ class TextBox(tk.Text, TextBoxEdit, TextBoxText, PopMenu):
                 ]
         menu = self.add_popmenu(cmds)        
    
-        self.bind('<Button-1>', self.on_click)
+        self.bind('<ButtonRelease-1>', self.on_click)
         self.bind('<KeyPress>', self.on_keydown)
         self.bind('<KeyRelease>', self.on_keyup) 
         self.bind('<<check_cmd_list>>', self.check_cmdlist)
@@ -435,18 +627,18 @@ class TextBox(tk.Text, TextBoxEdit, TextBoxText, PopMenu):
             self.bind(key, self.on_remove_tab)   
         self.bind('<Control-f>', self.on_find_text)
         self.bind('<Control-v>', self.on_key_v)
-        self.bind('<KeyRelease-Return>', self.on_key_return)                     
+        self.bind('<KeyRelease-Return>', self.on_key_return)  
+        self.bind_all('<<text_changed>>', self.on_text_changed)                   
         self.tag_list = []                     
         self.insert('1.0', '\n'*30)                  
         
     def set_filename(self, filename):
         self.filename = filename
         if '.' in filename:
-            self.ext = os.path.splitext(filename)[-1].replace('.', '')
-            self.pattern = self.patterns.get(self.ext, self.patterns['default'])               
+            self.ext = os.path.splitext(filename)[-1].replace('.', '')                          
         else:
-            self.pattern = self.patterns['default']
             self.ext = ''
+        self.init_pattern()    
         
     def check_cmdlist(self, event=None):
         if self.cmdlist == []:
@@ -494,6 +686,7 @@ class TextBox(tk.Text, TextBoxEdit, TextBoxText, PopMenu):
         self.tag_config('comments',  foreground='#789')
         self.tag_config('selected',  background='lightgray')
         self.tag_config('find',  background='yellow')
+        self.tag_config('curline', background='#e7e7e7') 
         self.tag_config('title', font='Mono 11 bold', foreground='#333', background='#ddd') 
         self.tag_config('bold', font='Mono 10 bold', foreground='#333')
         self.tag_config('function', font='Mono 10', foreground='#000')      
@@ -502,35 +695,8 @@ class TextBox(tk.Text, TextBoxEdit, TextBoxText, PopMenu):
         self.tag_config('black', font='Mono 10', foreground='#000')
         self.tag_config('word', font='Mono 10', foreground='#222')
         self.tag_config('gray', font='Mono 10', foreground='#333')        
-        self.key_tagnames = ['key', 'class', 'classname', 'str1', 'str2', 'int', 'op', 'self', 'comments']
+        self.key_tagnames = ['key', 'class', 'classname', 'str1', 'str2', 'int', 'op', 'self', 'comments'] 
                 
-    def init_pattern(self):
-        self.patterns = {}
-        keys = 'from|import|def|class|if|else|elif|for|in|then|dict|list|continue|return'
-        keys += '|None|True|False|while|break|pass|with|as|try|except|not|or|and|do|const|local'
-        p0 = '(?P<class>class)\s+(?P<classname>\w+)'
-        p1 = '|(?P<str1>\'[^\'\n]*\')|(?P<str2>\"[^\"\n]*\")'        
-        p2 = '|(?<![\w])(?P<int>\d+)|(?P<op>[\=\+\-\*\/\(\)\.\%])|(?P<self>self)'       
-        p3 = '|(?<![\w])(?P<key>%s)(?![\w])' % keys     
-        p4 = '|(?P<comments>#.*)'     
-        self.patterns['py'] = re.compile(p0 + p1 + p2 + p3 + p4)     
-        self.pattern = self.patterns['py']       
-        self.patterns['default'] = self.patterns['py'] 
-        
-        keys = 'Class|NAME|DESCRIPTION|PACKAGE\sCONTENTS|CLASSES|Function|Help\son'
-        p = '(?P<title>^[A-Z][A-Z\s\-\_\:]+)|(?P<function>\w+)\s*(?=\()|(?P<colon>\w.+\:)'
-        p += '|(?P<str1>\'[^\'\n]*\')|(?P<str2>\"[^\"\n]*\")'  
-        p += '|(?<![\w])(?P<int>[\d\.\+\-]+)'
-        p += '|(?P<helpon>^%s)' % keys
-        self.patterns['txt'] = re.compile(p)     
-        
-        keys = 'Class|NAME|DESCRIPTION|PACKAGE\sCONTENTS|CLASSES|Function|Help\son'
-        p = '(?P<title>^[A-Z][A-Z\s\-\_\:]+)|(?P<function>\w+)\s*(?=\()|(?P<colon>\w.+\:)'
-        p += '|(?P<str1>\'[^\'\n]*\')|(?P<str2>\"[^\"\n]*\")'  
-        p += '|(?<![\w])(?P<int>[\d\.\+\-]+)'
-        p += '|(?P<helpon>^%s)' % keys
-        self.patterns['rst'] = re.compile(p)
-        
     def on_clear(self, event=None):
         self.textbox.clear_all()
           
@@ -623,137 +789,14 @@ class TextBox(tk.Text, TextBoxEdit, TextBoxText, PopMenu):
         self.delete('1.0', 'end')
         
     def on_select_all(self, event=None):
-        self.tag_add('sel', '1.0', 'end')
-        
-    def split_tokens(self, text):    
-        lst = [] 
-        for m in re.finditer(self.pattern, text):
-            i, j = m.start(), m.end()            
-            for tag, s in m.groupdict().items():
-                if s != None:                           
-                    lst.append((s, text.find(s, i), tag))  
-        return lst
-                    
-    def remove_tags(self, idx1, idx2):        
-        for s in self.key_tagnames:
-            self.tag_remove(s, idx1, idx2)
-
-    def add_tag_list(self, i, lst):
-        head = str(i) + '.'
-        for p in lst:        
-            s, j, tag = p
-            idx1 = head + str(j)
-            idx2 = head + str(j+len(s))
-            self.tag_add(tag, idx1, idx2)
-        
-    def tag_line(self, i, text):
-        self.remove_tags('%d.0'%i, '%d.end'%i)      
-        s = text.strip()
-        if s == '':
-            return
-        s0 = s[0]    
-        if s0 == '#':      
-            lst = [(text, 0, 'comments')]  
-        else:            
-            lst = self.split_tokens(text)
-        if lst != []:
-            self.add_tag_list(i, lst)
-        return lst
-        
-    def replace_str(self, text):
-        text = text.replace('\\\'', '@$').replace('\\\"', '@&')        
-        def reps(m):            
-            s0 = m.group(0)
-            q = s0[0]
-            lst = []
-            for s in s0.splitlines():
-                 n = len(s)
-                 if n > 2:
-                     n -= 2
-                 lst.append(q+'$'*n+q)            
-            return '\n'.join(lst)
-        text = re.sub('(\"\"\"[^\"]*\"\"\")', reps, text)  
-        return text
-        
-    def update_tag(self):       
-        i = 1    
-        text = self.get_text()  
-        text = self.replace_str(text)
-        for line in text.splitlines():           
-            self.tag_line(i, line)       
-            i += 1
-        self.pre_text = text      
-         
-    def compare_text(self, text1, text2):
-        lines1 = text1.splitlines()
-        lines2 = text2.splitlines() 
-        n1, n2 = len(lines1), len(lines2)                           
-        if self.compare('insert', '<=', 'current'):            
-           s = self.get_line_index('insert') - 3
-        else:
-           s = self.get_line_index('current') - 3
-        if s < 0:
-            s = 0   
-        if n1 > n2:
-            e = n2
-        else:
-            e = n1
-        if lines1[0:s] != lines2[0:s]:  
-            s = 0
-        for i in range(s, e):
-            if lines1[i] != lines2[i]:        
-                break                        
-        if i >= n1:
-            return (1, n1)
-        top = i
-        if n1 == n2:            
-           if lines1[i+1:] == lines2[i+1:]:
-              return (i+1, i+1)
-        elif n1 > n2:
-            d = n1 - n2
-            if lines1[i+d+1:] == lines2[i+1:]:
-               return (i+1, i+d+1) 
-        else:
-            d = n2 - n1
-            if lines1[i+1:] == lines2[i+d+1:]:
-               return (i+1, i+1)             
-        bottom = e   
-        return (top+1, bottom+1)
-        
-    def tag_line_by_range(self, i, j):
-        text = self.get('%d.0'%(i-1), '%d.end'%j)
-        text = self.replace_str(text)
-        for line in text.splitlines():                
-            self.tag_line(i-1, line)   
-            i += 1   
-           
-    def check_and_update(self):
-        text1 = self.get_text()
-        text2 = self.pre_text
-        if text2 == '':
-            self.pre_text = text1
-            self.update_tag()
-            return 
-        if text1 == text2:
-            return
-        diff_range = self.compare_text(text1, text2)        
-        self.pre_text = text1
-        if diff_range != ():
-           i, j = diff_range     
-           self.tag_line_by_range(i, j)
+        self.tag_add('sel', '1.0', 'end')                                   
                 
-    def update_set(self, flag='check'):        
+    def update_set(self, flag='check'):  
         self.update_flag = flag
-        if flag == 'check':
-            self.check_and_update()
-        elif flag == 'all':
-            self.update_tag()
-        elif flag == 'page':
-            i, j = self.get_view_range()
-            self.tag_line_by_range(i, j)
+        #self.event_generate('<<text_changed>>')
+        self.update_tag()  
         if self.modified == False:
            self.set_modified()
-        self.update()
               
     def update_all(self, flag=None):                
         self.update_tag()        
@@ -781,7 +824,7 @@ class ScrollText(TextBox):
         scrollbar = tk.Scrollbar(frame, command=self.yview)
         scrollbar.pack(side='right', fill='y', expand=False)
         self.scrollbar = scrollbar
-        self.config(yscrollcommand = self.on_scroll)              
+        self.config(yscrollcommand = self.on_scroll)       
             
     def add_widget(self, idx, widget):
         self.window_create(idx, window=widget)
@@ -792,6 +835,13 @@ class ScrollText(TextBox):
         return i, j
         
     def update_line_index(self):
+        self.tag_remove('curline', '1.0', 'end')
+        p1 = self.index('insert').split('.')[0]
+        idx1 = p1 + '.0'
+        idx2 = p1 + '.end'
+        self.tag_add('curline', idx1, idx2)  
+        self.tag_lower('curline') 
+        
         if self.statusbar == None:
             return
         n = self.index('end').split('.')[0]
@@ -855,26 +905,24 @@ class ScrollText(TextBox):
         else:
             self.search_define(key)     
             
+
+        
 #---------------------------------------------------------------------------------- 
 def test_textbox(filename='', TextBox=ScrollText):
-    from messagebox import Messagebox 
+    from ui import Messagebox, TwoFrame
     from fileio import fread
     root = tk.Tk()
     root.title('TextEditor')
     root.geometry('1024x900')    
-    frame = tk.Frame(root)
+    frame = TwoFrame(root, type='v', sep=0.7)
     frame.pack(fill='both', expand=True)  
-    bottomframe = tk.Frame(frame)       
-    bottomframe.pack(side='bottom', fill='both', expand=True)
-    topframe = tk.Frame(frame)
-    topframe.pack(side='top', fill='both', expand=True)
     
-    textbox = TextBox(topframe)
+    textbox = TextBox(frame.top)
     textbox.pack(fill='both', expand=True)
     
-    msg = Messagebox(bottomframe)        
+    msg = Messagebox(frame.bottom)        
     statusbar = msg.add_statusbar()
-    msg.pack(side='bottom', fill='x', expand=False)
+    msg.pack(side='bottom', fill='both', expand=True)
     textbox.msg = msg
     textbox.statusbar = statusbar     
     
@@ -909,8 +957,9 @@ def test_textbox(filename='', TextBox=ScrollText):
         
 #----------------------------------------------------------------------------------      
 if __name__ == '__main__':   
-    fn = __file__      
-    fn = '/home/athena/src/help/test.rst'
+    #fn = __file__      
+    fn = '/home/athena/src/py/test/textedit/test_sample.py'
+    #fn = '/home/athena/src/help/test.rst'
     test_textbox(fn)          
         
 

@@ -370,7 +370,8 @@ class FileTreeView(TreeView, PopMenu):
         self.tag_configure('file', font='Mono 10', foreground='#555')        
         self.select_action = select_action
         self.currentpath = '.'    
-        os.chdir('/home/athena')
+        home_dir = os.path.expanduser("~")
+        os.chdir(home_dir)
         self.text = ''
         self.data = {}
         self.pathvars = {}
@@ -380,11 +381,12 @@ class FileTreeView(TreeView, PopMenu):
         cmds.append(('-', None))
         cmds.append(('Create project', self.on_create_project))
         cmds.append(('-', None))
+        
         cmds.append(('~/src/', self.go_src_path))
         cmds.append(('~/', self.go_home_path))
-        cmds.append(('~/src/py', self.go_py_path))
-        cmds.append(('~/src/py/test', self.go_test_path))
-        cmds.append(('~/src/py/game', self.go_game_path))
+        cmds.append(('~/py', self.go_py_path))
+        cmds.append(('~/py/test', self.go_test_path))
+        cmds.append(('~/py/game', self.go_game_path))
         
         self.add_popmenu(cmds)    
         self.bind('<ButtonRelease-1>', self.on_select)         
@@ -424,15 +426,15 @@ class FileTreeView(TreeView, PopMenu):
         self.set_path(path)
         
     def go_py_path(self, event=None):
-        path = os.path.expanduser('~') + os.sep + 'src/py'
+        path = os.path.expanduser('~') + os.sep + 'py'
         self.set_path(path)
  
     def go_test_path(self, event=None):
-        path = os.path.expanduser('~') + os.sep + 'src/py/test'
+        path = os.path.expanduser('~') + os.sep + 'py/test'
         self.set_path(path)      
            
     def go_game_path(self, event=None):
-        path = os.path.expanduser('~') + os.sep + 'src/py/game'
+        path = os.path.expanduser('~') + os.sep + 'py/game'
         self.set_path(path)   
         
     def on_update(self, event=None):

@@ -207,12 +207,10 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook):
         msg.action = self.on_cmd_action
         sys.stdout = self.msg
         sys.stderr = self.msg  
-        self.update()                              
-        if filename == None or filename == '':
-           self.after(10, self.load_ini)
-        else:
-           self.open_file(filename)
-           
+        self.update()        
+        self.filename = filename
+        self.after(10, self.load_ini)                     
+                   
     def set_prj(self, fn):
         self.prjfile = fn
                 
@@ -588,6 +586,8 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook):
             self.fav_dir_tree.add_file(fn)            
             path = fn.rsplit(os.sep, 1)[0]
             self.fav_dir_tree.add_dir(path)
+        if not (self.filename == None or self.filename == ''):
+           files.append(self.filename)    
         for filename in files:
            filename = os.path.realpath(filename)
            if os.path.exists(filename) == False:
@@ -596,6 +596,7 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook):
            self.open_file(filename)
            self.update()
            lastfile = filename        
+
         if lastfile != None:
            path = os.path.dirname(lastfile)
            parent = os.path.split(path)[0]
@@ -630,34 +631,34 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook):
         self.save_ini()
         
 #----------------------------------------------------------------------------------                    	
-def main(filename):  
-    #os.chdir('/home/athena/src/html/canvas')
+def main(filename):      
     root = tk.Tk()
     root.title('TextEditor')
-    root.geometry('1320x960')    
+    root.geometry('1700x1000')    
     try:
         icon = '/home/athena/.icons/applications-astronomy.png'
         root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=icon))
     except:
         pass    
     frame = MenuTextFrame(root, filename)
-    frame.pack(fill='both', expand=True)        
-    #frame.open_file('/home/athena/tmp/t0.py')
+    frame.pack(fill='both', expand=True)       
     frame.mainloop()             
     
-if __name__ == '__main__':
-    os.chdir('/home/athena/src/menutext')
+if __name__ == '__main__':    
     filename = None
-    #print(len(sys.argv))
+    srcpath = os.path.dirname(__file__)
+    #print('argv', len(sys.argv))
+    print(sys.argv)
     if len(sys.argv) > 1:
         filename = sys.argv[1]   
-        filename = os.path.realpath(filename)     
-        #print(filename)
+        filename = os.path.realpath(filename)  
+        #srcpath = os.path.dirname(filename)   
+        #print('argv', filename, srcpath)
+    
+    if os.path.exists(srcpath):
+       os.chdir(srcpath)
     main(filename)
     
-
-
-
 
 
 
