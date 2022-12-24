@@ -596,7 +596,8 @@ class HelpFrame(tk.Frame, PopMenu):
             
     def read_map(self):
         dct = {}
-        with open('help_map.lst', 'r') as f:
+        path = os.path.dirname(__file__) + os.sep
+        with open(path + 'help_map.lst', 'r') as f:
             text = f.read()            
             for s in text.splitlines():
                 if not '=' in s:
