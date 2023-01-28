@@ -1,6 +1,23 @@
 import tkinter as tk
 import re
-   
+import tkcode
+
+#----------------------------------------------------------------------------------
+class MenuBar(tk.Frame):
+    def __init__(self, master, items=[], cnf={}, **kw):
+        tk.Frame.__init__(self, master, **kw)
+        self.button = {}
+        for key in items:
+            if key != '':
+                self.button[key] = tk.Button(self, text=key, relief='flat')
+                self.button[key].pack(side='top', fill='both', expand=False, pady=5)             
+            else:
+                frame = tk.Frame(self, width=100, height=1, background='#999')
+                frame.pack(pady=5) 
+          
+    def bind_action(self, item, action):
+        self.button[item].bind('<ButtonRelease-1>', action) 
+           
 #------------------------------------------------------------------------------------------
 class PopMenu():    
     def add_popmenu(self, cmds=[]):
@@ -12,18 +29,21 @@ class PopMenu():
             else:
                 menu.add_command(label=p[0], command=p[1])         
         self.menu = menu   
+        self.menu.show = False
         self.bind('<ButtonRelease-1>', self.unpost_menu)
         self.bind('<ButtonRelease-3>', self.post_menu) 
         return self             
 
     def unpost_menu(self, event=None):
-        self.menu.unpost()
+        if self.menu.show:
+           self.menu.unpost()
         
     def post_menu(self, event=None):
         x, y = event.x, event.y   
         x1 = self.winfo_rootx()     
         y1 = self.winfo_rooty()
         self.menu.post(x + x1, y + y1)           
+        self.menu.show = True
 
 #-------------------------------------------------------------------------------------------  
 class TextLinebar(tk.Frame):
@@ -81,6 +101,7 @@ class TextObj(tk.Text):
         tk.Text.__init__(self, master, **kw)
         self.vars = {}
         self.text = None       
+        self.msg = None
         self.config(foreground='#121')
         self.config(background='#f5f5f3')    
         self.tag_config('bold', font='Mono 10 bold', background='#ddd')         
@@ -133,7 +154,43 @@ class TextObj(tk.Text):
         idx2 = self.index('insert')
         if tag != None:
             self.tag_add(tag, idx1, idx2)
-        self.insert('insert', end)      
+        self.insert('insert', end)          
+    
+    def list_str(self, lst):
+        t = ' '
+        text = ''
+        n = int(self.winfo_reqwidth() / 20)
+        for s in lst:
+            t += s.ljust(20) + ' '
+            if len(t) > n:
+                text += t + '\n'
+                t = ' '
+        return text + t
+        
+    def put_list(self, lst, bychar=False):
+        if bychar == False:      
+            self.puts(self.list_str(lst))
+        else:
+            dct = {}
+            lst1 = []
+            for s in lst:
+                c = s[0].lower()
+                if not c in lst1:
+                    lst1.append(c)
+            lst1.sort()
+            for c in lst1:
+                dct[c] = []
+            for s in lst:
+                c = s[0].lower()
+                dct[c].append(s)
+            self.print_dct(dct)
+        
+    def print_dct(self, dct):
+        for s, v in dct.items():
+            if v == []:
+                continue
+            self.puts_tag(s[0].upper()+s[1:], 'bold', head='\n', end='\n')
+            self.put_list(v)  
     
     def set_text(self, text):
         self.clear_all()
@@ -147,8 +204,18 @@ class TextObj(tk.Text):
                 return ''
             idx1, idx2 = p
             return self.get(idx1, idx2)
-        return self.get('1.0', 'end -1c')                 
-        
+        return self.get('1.0', 'end -1c')     
+                    
+    def get_line_index(self, idx='current'):
+        if type(idx) == int:
+            return idx
+        if type(idx) == str:
+            if re.fullmatch('\d+', idx) != None:
+               return int(idx)
+            idx = self.index(idx)
+        idx = self.index(idx).split('.')[0]
+        return int(idx)
+
     def get_line_text(self, idx=None):
         if idx == None or idx == 'current':
             idx = self.index('insert')
@@ -170,6 +237,8 @@ class TextObj(tk.Text):
         return ''
 
     def find_text(self, key=None):
+        if self.msg == None:
+            return
         #self.msg.clear_all()
         if key == None:
             key = self.get_word('insert')        
@@ -190,6 +259,17 @@ class TextObj(tk.Text):
     def delete_range(self, p):
         self.delete(p[0], p[1])
         
+    def add_widget(self, index, widget):
+        self.window_create(index, window=widget)
+        
+    def add_button(self, index, text, command=None, **kw):        
+        button = tk.Button(self, text=text, command=command, **kw)
+        self.window_create(index, window=button)
+        end = self.index('end')
+        self.tag_add('button', index, end)
+        button.range = (index, end)
+        return button
+
     def flush(self, text=''):
         return
         
@@ -275,7 +355,7 @@ class FrameLayout():
         obj.f0.place(relwidth=obj.x)        
         obj.f1.place(relx=x1, relwidth=1-x1)         
 
-
+      
 
 def test_textobj():               
     from ui import TwoFrame, MsgBox

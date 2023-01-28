@@ -1,17 +1,26 @@
 import os
 import re
 import sys
-import subprocess
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog
 from operator import itemgetter, attrgetter
-from ui import PopMenu
-from ui import TagTextObj, TwoFrame
+from aui import PopMenu
+from aui import Text, TwoFrame
 from xmltree import XmlTree       
 import fileio
 from runfile import RunFile
+from searchbox import SearchBox
+import DB as db
         
+def realpath(path):    
+    if '~' in path:
+        i = path.find('~')
+        path = path[i:]
+        path = os.path.expanduser(path)    
+    path = os.path.realpath(path) 
+    return path
+    
 class NodeObj(object):
     def __init__(self, node, data=None):
         self.node = node
@@ -25,10 +34,44 @@ class NodeObj(object):
     def get_data(self):
         return self.data
         
+class Notebook(tk.Frame):
+    def __init__(self, master, cnf={}, **kw):
+        tk.Frame.__init__(self, master)
+        self.pages = {}
+        notebook = ttk.Notebook(self)
+        notebook.pack(fill = 'both', expand=True)
+        self.notebook = notebook       
+        notebook.pack(fill='both', expand=True)
+        notebook.bind('<ButtonRelease-1>', self.switch_page)   
+                    
+    def switch_page(self, event=None):
+        dct = self.notebook.tab('current')
+        label = dct['text'].strip()
+
+    def add_page(self, label, widgetclass):
+        frame = tk.Frame(self.notebook)
+        frame.pack(fill='both', expand=True)                          
+        widget = widgetclass(frame)
+        widget.pack(fill='both', expand=True)         
+        widget.notepage = frame
+        self.notebook.add(frame, text=label.center(17))  
+        self.pages[label] = widget
+        return widget  
+
+#-------------------------------------------------------------------------
+class TreeView(ttk.Treeview, PopMenu):
+    def __init__(self, master, **kw):
+        super().__init__(master, **kw)
+        style = ttk.Style()
+        style.configure('Calendar.Treeview', rowheight=24)
+        self.config(style='Calendar.Treeview')
+        self.tag_configure('folder', font='Mono 10 bold', foreground='#557')
+        self.tag_configure('file', font='Mono 10', foreground='#555')   
+        
 #---------------------------------------------------------------------------------
-class ClassTree(ttk.Treeview, PopMenu):
-    def __init__(self, master, select_action=None, cnf={}, **kw):
-        ttk.Treeview.__init__(self, master)
+class ClassTree(TreeView):
+    def __init__(self, master, cnf={}, **kw):
+        super().__init__(master)
         self.textbox = None
         self.filename = None
         self.data = {}
@@ -45,17 +88,25 @@ class ClassTree(ttk.Treeview, PopMenu):
         self.add_popmenu(cmds)    
         self.bind('<ButtonRelease-1>', self.on_select)    
         self.bind('<Enter>', self.on_enter)  
-        self.select_action = select_action    
+        self.bind_all("<<SwitchTextBox>>", self.on_update)
+        self.bind_all("<<SetText>>", self.on_update)        
+        self.cmd_action = self.winfo_toplevel().cmd_action    
         self.text = ''
         self.clicktime = 0     
         self.init_pattern()        
 
     def on_enter(self, event=None):
-        self.on_update()
+        self.on_update()        
         
     def on_update(self, event=None):
-        if self.textbox != None:    
-            text = self.textbox.get_text()  
+        textbox = self.cmd_action('textbox')
+        if textbox == None:
+            root = self.winfo_toplevel()
+            if hasattr(root, 'textbox'):
+                textbox = root.textbox
+                self.textbox = textbox
+        if textbox != None:    
+            text = textbox.get('1.0', 'end')  
             if self.text != text:
                 self.set_text(text)        
         
@@ -75,7 +126,7 @@ class ClassTree(ttk.Treeview, PopMenu):
                 i, name, key = data.get_data()
             else:
                 i, name, key = data
-            self.select_action(i, name, key)
+            self.cmd_action('class', (i, name, key))
         
     def get_py_tree(self, text):
         objlist = ['']
@@ -301,64 +352,12 @@ class ClassTree(ttk.Treeview, PopMenu):
         for obj in self.get_children():
             self.item(obj, open=1)
         return     
-        
-class FileView(tk.Frame):
-    def __init__(self, master, **kw):       
-        tk.Frame.__init__(self, master)
-        self.textobj = TagTextObj(self)
-        self.textobj.pack(fill='both', expand=True)
-        
-    def set_text(self, text):
-        self.textobj.set_text(text)   
              
-class ClassNotebook(tk.Frame):
-    def __init__(self, master, select_action=None, cnf={}, **kw):
-        tk.Frame.__init__(self, master)
-        self.pages = {}
-        self.select_action = select_action
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill = 'both', expand=True)
-        self.notebook = notebook
-        self.tree1 = self.add_page('Class', ClassTree) 
-        self.tree2 = self.add_page('Preview', FileView)                 
-            
-        notebook.pack(fill='both', expand=True)
-        notebook.bind('<ButtonRelease-1>', self.switch_page)        
-    
-    def set_text(self, text):
-        self.tree1.set_text(text)
-        self.tree2.set_text(text)
-            
-    def switch_page(self, event=None):
-        dct = self.notebook.tab('current')
-        label = dct['text'].strip()
-        print('label')
-
-    def add_page(self, label, widgetclass):
-        frame = tk.Frame(self.notebook)
-        frame.pack(fill='both', expand=True)         
-        widget = widgetclass(frame, select_action = self.select_action)
-        widget.pack(fill='both', expand=True)         
-        widget.notepage = frame
-        self.notebook.add(frame, text=label.center(17))        
-        #n = len(self.pages)        
-        #self.notebook.select(n)        
-        return widget                  
         
 #-------------------------------------------------------------------------
-class TreeView(ttk.Treeview):
-    def __init__(self, master, **kw):
-        ttk.Treeview.__init__(self, master, **kw)
-        style = ttk.Style()
-        style.configure('Calendar.Treeview', rowheight=24)
-        self.config(style='Calendar.Treeview')
-        self.tag_configure('folder', font='Mono 10 bold', foreground='#557')
-        self.tag_configure('file', font='Mono 10', foreground='#555')        
-        
-#-------------------------------------------------------------------------
-class FileTreeView(TreeView, PopMenu):
-    def __init__(self, master, select_action=None, cnf={}, **kw):
-        TreeView.__init__(self, master)
+class FileTreeView(TreeView):
+    def __init__(self, master, cmd_action=None, cnf={}, **kw):
+        super().__init__(master)
         self.data = {}
         self.dirs = []              
         self.files = []        
@@ -368,7 +367,7 @@ class FileTreeView(TreeView, PopMenu):
         self.config(style='Calendar.Treeview')
         self.tag_configure('folder', font='Mono 10 bold', foreground='#557')
         self.tag_configure('file', font='Mono 10', foreground='#555')        
-        self.select_action = select_action
+        self.cmd_action = self.winfo_toplevel().cmd_action   
         self.currentpath = '.'    
         home_dir = os.path.expanduser("~")
         os.chdir(home_dir)
@@ -377,16 +376,14 @@ class FileTreeView(TreeView, PopMenu):
         self.pathvars = {}
         self.clicktime = 0
         self.previtem = None
-        cmds = [('Open', self.on_open), ('Update', self.on_update)]
-        cmds.append(('-', None))
-        cmds.append(('Create project', self.on_create_project))
-        cmds.append(('-', None))
-        
-        cmds.append(('~/src/', self.go_src_path))
+        cmds = [('Update', self.on_update)]
+        cmds.append(('-', None))        
+        cmds.append(('/link', self.go_link_path))
         cmds.append(('~/', self.go_home_path))
-        cmds.append(('~/py', self.go_py_path))
-        cmds.append(('~/py/test', self.go_test_path))
-        cmds.append(('~/py/game', self.go_game_path))
+        cmds.append(('-', None))
+        cmds.append(('~/src/', self.go_src_path))
+        cmds.append(('~/tmp/', self.go_tmp_path))
+        cmds.append(('~/test', self.go_test_path))        
         
         self.add_popmenu(cmds)    
         self.bind('<ButtonRelease-1>', self.on_select)         
@@ -394,7 +391,7 @@ class FileTreeView(TreeView, PopMenu):
     def on_create_project(self, event=None):           
         item = self.focus() 
         data = self.data.get(item)
-        if data == None or self.select_action == None:
+        if data == None or self.cmd_action == None:
             return
         path, tag = data
         self.create_project(path)
@@ -415,28 +412,29 @@ class FileTreeView(TreeView, PopMenu):
         pass
         
     def add_dir(self, path):
-        pass
-         
+        pass         
+       
+    def go_link_path(self, event=None):
+        path = '/link'
+        self.set_path(path)   
+        
     def go_src_path(self, event=None):
-        path = os.path.expanduser('~') + os.sep + 'src'
+        path = realpath('~/src')
         self.set_path(path)
  
     def go_home_path(self, event=None):
-        path = os.path.expanduser('~') 
+        path = realpath('~') 
         self.set_path(path)
         
-    def go_py_path(self, event=None):
-        path = os.path.expanduser('~') + os.sep + 'py'
+    def go_tmp_path(self, event=None):
+        path = realpath('~/tmp') 
+        path = os.path.expanduser('~') + os.sep + 'tmp'
         self.set_path(path)
  
     def go_test_path(self, event=None):
-        path = os.path.expanduser('~') + os.sep + 'py/test'
-        self.set_path(path)      
-           
-    def go_game_path(self, event=None):
-        path = os.path.expanduser('~') + os.sep + 'py/game'
-        self.set_path(path)   
-        
+        path = realpath('~/test') 
+        self.set_path(path)                 
+
     def on_update(self, event=None):
         path = os.getcwd()
         if '__pycache__' in path:
@@ -447,10 +445,10 @@ class FileTreeView(TreeView, PopMenu):
     def on_open(self, event=None):
         item = self.focus() 
         data = self.data.get(item)
-        if data == None or self.select_action == None:
+        if data == None or self.cmd_action == None:
             return
         path, tag = data
-        self.select_action(path, tag)
+        self.cmd_action('path', (path, tag))
         
     def set_path(self, dirpath):
         dirpath = os.path.realpath(dirpath)
@@ -508,10 +506,10 @@ class FileTreeView(TreeView, PopMenu):
             else:
                self.select_folder(item, path)
             return
-        if self.select_action == None or tag != 'file':
+        if self.cmd_action == None or tag != 'file':
            return        
         if self.click_select == 'click' or doubleclick == True:
-           self.select_action(path, tag)            
+           self.cmd_action('path', (path, tag))
            self.add_file(path)
             
     def add_path(self, node, dirpath):
@@ -563,13 +561,39 @@ class FileTreeView(TreeView, PopMenu):
         if item != None:
            self.active_item(item)
         return               
+        
 
-class DirTreeView(FileTreeView):
-    def __init__(self, master, select_action=None, cnf={}, **kw):
-        FileTreeView.__init__(self, master, select_action, cnf={}, **kw)        
-        self.dirs = []              
-        self.files = []
+class History(FileTreeView):
+    def __init__(self, master, **kw):
+        super().__init__(master, **kw)  
+        appname = master.tk.getvar('appname')
+        if appname == None:
+            appname = 'test_tree'
+        self.key_name = appname + '.history'   
+        history = {} 
+        res = db.get_cache(self.key_name)
+        if len(res) > 0 and '{' in res:
+            history = eval(res)
+
+        dirs = history.get('dirs', ['/link', '/link/src'] )              
+        files = history.get('files', [])
         self.history_item = ''
+        self.bind('<FocusIn>', self.on_focus_in)
+        self.bind('<FocusOut>', self.on_focus_out)  
+        for p in dirs:
+            self.add_dir(p)
+        
+    def on_focus_in(self, event=None):
+        pass        
+        
+    def on_focus_out(self, event=None):
+        self.cache_data()
+        
+    def cache_data(self):
+        text = str({'dirs': self.dirs, 'files':self.files})
+        text = text.replace(',', ',\n')
+        #print('del history', text)
+        db.set_cache(self.key_name, text)
         
     def add_file(self, filename):
         if filename in self.files:
@@ -608,248 +632,112 @@ class DirTreeView(FileTreeView):
             item = self.insert(self.history_item, 'end', text=p[1], tag='file') 
             self.data[item] = (fn, 'file') 
 
-class PrjFiles(TreeView, PopMenu, RunFile):
-    def __init__(self, master, select_action=None, **kw):
-        TreeView.__init__(self, master, **kw)        
-        self.mainfile = ''
-        self.prjpath = ''
-        self.files = []
-        self.data = {}
-        cmds = [('Open', self.on_open)]
-        cmds.append(('Run', self.on_run))        
-        self.add_popmenu(cmds)
-        frame = tk.Frame(master)
-        frame.pack(side='top', fill='x', expand=False)
-        self.add_button(frame, 'Open', self.on_open)
-        self.add_button(frame, 'Close', self.on_close)
-        self.add_button(frame, 'Run', self.on_run)
-        self.previtem = None
-        self.clicktime = 0
-        self.select_action = select_action
-        self.bind('<ButtonRelease-1>', self.on_select)   
-        
-    def get_app(self):
-        root = self.winfo_toplevel()
-        if hasattr(root, 'app'):
-            return root.app
-        return None
-        
-    def on_select(self, event=None):        
-        self.unpost_menu()
-        item = self.focus()           
-        if self.previtem == item and event.time - self.clicktime < 500:
-            doubleclick = True            
-            #self.msg.puts('on_select', item, self.item(item, option='text'))
-        else:
-            doubleclick = False
-        self.previtem = item
-        self.clicktime = event.time
-        data = self.data.get(item)
-        if data == None:
-            return
-        path, tag = data 
-        if self.select_action == None or tag != 'file':
-           return        
-        if doubleclick == True:
-           self.select_action(path, tag)            
-        
-    def add_button(self, frame, label, action):
-        button = tk.Button(frame, text=label)
-        button.pack(side='left')
-        button.bind('<ButtonRelease-1>', action)
-        return button
 
-    def on_run(self, event=None):
-        if self.mainfile == '':
-            return
-        fn = self.mainfile        
-        app = self.get_app()
-        if app != None:
-            app.run(fn)
-        else:
-            self.run(fn)
-
-    def file_dialog(self, dialog, op='Open', mode='r'):
-        filepath = '/home/athena/src/py/'        
-        filename = dialog(defaultextension='.prj', mode = mode,
-               filetypes = [('Project files', '.prj'), ('all files', '.*')],
-               initialdir = filepath,
-               initialfile = '',
-               parent = self,
-               title = op + ' File dialog'
-               )
-        if filename == None:
-            return None
-        return filename.name   
-        
-    def on_open(self, event=None):   
-        filename = self.file_dialog(tk.filedialog.askopenfile, 'Open', 'r')   
-        print('Filedialog return (%s)'%filename) 
-        if filename == None or filename == '':
-            return
-        self.set_prj(filename)
-        app = self.get_app()
-        if app != None:
-            app.set_prj(fn)            
-            
-    def on_close(self, event=None):
-        app = self.get_app()
-        if app != None:
-            app.set_prj('')
-        for obj in self.get_children():
-            self.delete(obj)
-        self.data = {}
-        self.mainfile = ''
-            
-    def set_prj(self, fn):
-        if fn == '':
-            return
-        try:
-            text = fileio.fread(fn)
-            dct = eval(text)
-        except:
-            return            
-        dirpath = os.path.dirname(fn)
-        self.prjpath = dirpath
-        for obj in self.get_children():
-            self.delete(obj)
-        self.data = {}
-        fn = dirpath + os.sep + 'main.py'
-        if os.path.exists(fn):
-            self.mainfile = fn
-        for dir, files in dct.items():
-            p = dirpath + dir 
-            if dir == '':
-                item = ''                
-            else:
-                item = self.add_dir(dir, p)        
-            for fn in files:
-                self.add_file(item, fn, p + os.sep + fn)
-            
-    def add_file(self, node, name, path):       
-        item = self.insert(node, 'end', text=name, tag='file') 
-        self.data[item] = (path, 'file') 
-        self.files.append(path)        
-        
-    def add_dir(self, name, path):     
-        item = self.insert('', 'end', text=name, tag='folder') 
-        self.data[item] = (os.path.realpath(path), 'folder')                 
-        return item
-            
-
-class TreeNotebook(tk.Frame):
-    def __init__(self, master, select_action=None, cnf={}, **kw):
-        tk.Frame.__init__(self, master)
-        self.pages = {}
-        self.select_action = select_action
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill = 'both', expand=True)
-        self.notebook = notebook
-        self.tree1 = self.add_page('File', FileTreeView) 
-        self.tree2 = self.add_page('Favorite', DirTreeView)    
-        self.tree3 = self.add_page('Project', PrjFiles)             
-            
-        notebook.pack(fill='both', expand=True)
-        notebook.bind('<ButtonRelease-1>', self.switch_page)
-        self.tree1.set_path(os.getcwd())
-        p0 = '/home/athena/src'
-        p1 = p0 + '/py'
-        for s in [p0, p1, p1 + '/example', p1 + '/test', p1 + '/game']:
-            self.tree2.add_dir(s)            
+class FilesNotebook(Notebook):
+    def __init__(self, master, cnf={}, **kw):
+        super().__init__(master)
+        self.filetree = self.add_page('File', FileTreeView) 
+        self.history = self.add_page('History', History)    
+        self.set_path('/link')                
     
     def set_path(self, path):
-        self.tree1.set_path(path)
+        self.filetree.set_path(path)            
+ 
+                
+class SideFrame(tk.Frame):
+    def __init__(self, master, cnf={}, **kw):
+        tk.Frame.__init__(self, master)
+        
+        frame = TwoFrame(self, sep=0.5, type='v')
+        frame.pack(fill='both', expand=True)
+        self.classtree = ClassTree(frame.top)
+        self.classtree.pack(fill='both', expand=True)
+                   
+        self.notebook = FilesNotebook(frame.bottom)
+        self.notebook.pack(fill='both', expand=True)
+        self.pages = self.notebook.pages
+        self.pages['Class'] = self.classtree
             
-    def switch_page(self, event=None):
-        dct = self.notebook.tab('current')
-        label = dct['text'].strip()
 
-    def add_page(self, label, widgetclass):
-        frame = tk.Frame(self.notebook)
-        frame.pack(fill='both', expand=True)         
-        widget = widgetclass(frame, select_action = self.select_action)
-        widget.pack(fill='both', expand=True)         
-        widget.notepage = frame
-        self.notebook.add(frame, text=label.center(17))        
-        #n = len(self.pages)        
-        #self.notebook.select(n)        
-        return widget            
-           
+class SideNotebook(Notebook):
+    def __init__(self, master, cnf={}, **kw):
+        Notebook.__init__(self, master)        
+        root = master.winfo_toplevel()    
+        self.app = root.app  
+        self.textbox = None
+        self.page1 = self.add_page('Class+File', SideFrame)  
+        self.pages['Search'] = self.add_page('SearchBox', SearchBox)    
+        for k, v in self.page1.pages.items():
+            self.pages[k] = v
+        self.filetree = self.pages['File']
+        self.classtree = self.pages['Class']     
+              
+    
+    def get_textbox(self):
+        self.textbox = self.app.textbox
+    
+    def set_text(self, text):
+        self.classtree.set_text(text) 
+        
+    def set_msg(self, msg):
+        self.msg = msg
+        self.puts = msg.puts
+        
+    def set_path(self, path):
+        self.filetree.set_path(path)
+        
+    def open_file(self, filename): 
+        self.get_textbox()
+        filename = os.path.realpath(filename)
+        self.textbox.open(filename)
+        self.classtree.event_generate("<<SetText>>") 
+        self.classtree.on_update() 
 
+    def on_select_file(self, path, tag):      
+        if tag == 'file':
+            self.open_file(path)      
+        
+    def on_command(self, cmd, data=None, flag=None):
+        self.get_textbox()
+        if cmd == 'textbox':
+            return self.textbox
+        if cmd == 'path':
+            self.on_select_file(data[0], data[1])
+        elif cmd == 'class':
+            self.textbox.tag_remove('sel', '1.0', 'end')                
+            i, name, tag = data
+            pos = self.textbox.index('%d.0' % i)
+            self.textbox.see(pos)                  
+
+            start = self.textbox.search(name, pos)
+            
+            end = start + '+%dc' % len(name)           
+            self.textbox.tag_add('sel', start, end)
+                
 
 if __name__ == '__main__':   
-    import ui
-    from ui import Messagebox 
-    class TestFrame(tk.Frame):
-        def __init__(self, master, select_act=None):       
-            tk.Frame.__init__(self, master)
-            self.select_act = select_act
-            frame = TwoFrame(self, sep=0.8, type='v')
-            frame.pack(fill='both', expand=True)
-            frame1 = TwoFrame(frame.top, sep=0.5, type='v')
-            frame1.pack(fill='both', expand=True)
-            notebook1 = ClassNotebook(frame1.top, select_action=self.on_select_class)
-            notebook1.pack(fill='both', expand=True)
-            self.classview = notebook1.tree1
-            self.fileview = notebook1.tree2
-            
-            notebook2 = TreeNotebook(frame1.bottom, select_action=self.on_select_file)
-            notebook2.pack(fill='both', expand=True)
-            msg = Messagebox(frame.bottom)
-            msg.pack(side='bottom', fill='x', expand=False)
-            statusbar = msg.add_statusbar()
-            self.msg = msg
-            treeview = notebook2.tree1
-            treeview.msg = self
-            treeview.click_select = 'click'
-            treeview.set_path('/home/athena/src')
-            treeview.active_file('/home/athena/src/menutext/idle.py')
-            treeview.update()
-            self.treeview = treeview
-            notebook2.tree2.add_file(__file__)
-            notebook2.tree2.add_file('/home/athena/src/menutext/menutext.py')
-            notebook2.tree3.set_prj('/home/athena/src/py/game/PlantsVsZombies/project.prj')
-            
-        def puts(self, *lst, end='\n'):
-            for text in lst:
-                self.msg.puts(str(text) + ' ')
-            
-        def fread(self, filename):
-            with open(filename, 'r') as f:
-                text = f.read()
-                f.close()
-                return text
+    from aui import aFrame, App 
+    from texteditor import TextEditor
+    class TestFrame(aFrame):
+        def __init__(self, master, **kw):       
+            super().__init__(master, **kw)
+            root = master.winfo_toplevel()
+            root.app = self
+            root.cmd_action = self.on_command
+            frame = self.twoframe(self, style='h', sep=0.3)     
+            text, msg = self.add_textmsg(frame.right, TextEditor)   
+
+            mainframe = SideNotebook(frame.left)
+            mainframe.pack(fill='both', expand=True)
+            mainframe.msg = msg
+            self.mainframe = mainframe
+            mainframe.open_file(__file__)                      
+
+        def on_command(self, cmd, data=None, flag=None):
+            self.mainframe.on_command(cmd, data, flag)
                 
-        def set_path(self, path):
-            self.treeview.set_path(path)
-            
-        def on_select_file(self, filename, tag):
-            self.puts(filename)
-            text = self.fread(filename)
-            self.classview.set_text(text, filename)
-            self.fileview.set_text(text)
-            if self.select_act != None:
-                self.select_act(text)
-            
-        def on_select_class(self, i, name, key):      
-            #self.textbox.goto(i, name, key) 
-            self.puts(i, name, key)
-            if type(i) is tuple:
-                text = self.textbox.text[:i[0]]
-                n = text.count('\n')        
-                self.textbox.see('%d.0' %n)      
-               
-    def main():
-        root = tk.Tk()
-        root.title('Frame and Canvas')
-        root.geometry('500x900') 
-        frame = TestFrame(root)
-        frame.pack(fill='both', expand=True)
-        #frame.on_select_file('/home/athena/src/help/test.rst', '')
-        frame.set_path('/home/athena/src/py/game')
-        frame.mainloop()   
-    
-    main()
+    app = App(title='Test Tree', size=(1100, 800), Frame=TestFrame)           
+    app.mainloop()
 
 
 
