@@ -137,7 +137,7 @@ def store_filelist():
     return 
         
 def test():
-    db = CacheDB()
+    db = DB.open('cache')
     text = db.get('python file list')[0]
 
     flst = eval(text)    

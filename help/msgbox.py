@@ -1,8 +1,8 @@
 import tkinter as tk
-from aui import PopMenu, TagTextObj 
+from aui import PopMenu, TextObj 
 import re
  
-class HelpMsgBox(TagTextObj, PopMenu):
+class HelpMsgBox(TextObj, PopMenu):
     def __init__(self, master, **kw):
         super().__init__(master, **kw)
         self.config(width=50)
