@@ -14,6 +14,7 @@ from textui import PopMenu, TextLinebar, TextObj
 from fileio import *
 from codestyle import codestyle
 import time
+from runfile import ExecCmd
 
 Q3a = "\"\"\""
 Q3b = '\'\'\''
@@ -261,7 +262,9 @@ class TextUtils():
             return self.get(idx1, idx2)        
         return self.get('1.0', 'end -1c')       
         
-    def fread(self, filename):        
+    def fread(self, filename):  
+        if not os.path.exists(filename):
+            return      
         with open(filename) as f:
             text = f.read()
             f.close()
@@ -606,6 +609,7 @@ class TextUI():
         scrollbar.pack(side='right', fill='y', expand=False)
         self.scrollbar = scrollbar
         self.config(yscrollcommand = self.on_scroll)   
+            
 
 class TextBox(tk.Text, TextUtils, PopMenu, TextSearch, TextTab, TextToken, TextUI):         
     def __init__(self, master, **kw):
@@ -626,6 +630,7 @@ class TextBox(tk.Text, TextUtils, PopMenu, TextSearch, TextTab, TextToken, TextU
         self.lexer = Python3Lexer()
         self.init_config()
         self.load_code_style()        
+        self.tester = None
         self.after(100, self.check_update)
          
         
@@ -653,7 +658,8 @@ class TextBox(tk.Text, TextUtils, PopMenu, TextSearch, TextTab, TextToken, TextU
                 ('-'),
                 ('Add Tab', self.on_add_tab),
                 ('Remove Tab', self.on_remove_tab),     
-              
+                ('-'),
+                ('Exec', self.on_exec_cmd),   
                 ]
         menu = self.add_popmenu(cmds)     
 
@@ -688,7 +694,14 @@ class TextBox(tk.Text, TextUtils, PopMenu, TextSearch, TextTab, TextToken, TextU
         if self.tag_ranges('find') :
             self.tag_remove('find', '1.0', 'end')
             
-            
+    def on_exec_cmd(self, event=None):        
+        if self.tester == None:
+            self.tester = ExecCmd(self, self.msg)
+        text = self.get_text('sel')
+        if text.strip() == '':
+            text = self.get_text()
+        
+        self.tester.exec_text(text)
 
 class SourceBox(TextBox, TextUI):
     def __init__(self, master, line=False, scroll=False):
@@ -741,13 +754,23 @@ class TextEditor(TextBox):
 if __name__ == '__main__':   
     def test():
         from aui import App   
-        frame = App(title='Test TextEditor', size=(1500, 900))
-        frame.add_set1(TextClass=TextEditor)
+        app = App(title='Test TextEditor', size=(1500, 900))
+        layout = app.get('layout')
+        tree = app.add('filetree')
+        msg = app.add('msg')
+        frame = app.get('frame')
+        textbox = TextEditor(frame)
+        layout.add_HV(tree, frame, msg)
+        textbox.msg = msg
+        textbox.pack(fill='both', expand=True)
         #fn = '~/tmp/test.py'
-        fn = '~/test/tk/button.py'
-        frame.textbox.open(fn)
-        frame.filetree.set_path('.')
-        frame.mainloop()     
+        fn = '/home/athena/tmp/der_t1.py'
+        
+        tree.set_path('.')
+        textbox.open(fn)
+        
+        msg.puts(textbox.filename)
+        app.mainloop()     
     from mainframe import main
     test()
 

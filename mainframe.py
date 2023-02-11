@@ -15,7 +15,7 @@ from texteditor import TextEditor
 from textui import FrameLayout, PopMenu, MenuBar
 from fileio import *
 from runfile import RunFile   
-import DB as db        
+    
           
 class TextNotebook():
     def switch_textbox(self, textbox):
@@ -125,7 +125,7 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
         self.root = root
         self.root.app = self
         self.parent = master
-        self.msg = None    
+        self.msg = self.textbox = None    
         self.compared = False
         self.vars = {}
         self.vars['history'] = []
@@ -200,7 +200,7 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
         self.textbox.event_generate('<<check_cmd_list>>') 
                 
     def add_menu(self, fmenu):
-        names = 'New,Open,,Close,,History,,Save,Save as,,Undo,Redo,,Copy,Cut,Paste,,'
+        names = 'New,Open,,Close,,History,,Save,Save as,,DB,Tester,ClassView,,Copy,Cut,Paste,,'
         names += 'Add Tab,Remove Tab,,Exec,,Run'
         menubar = MenuBar(fmenu, items=names.split(',')) 
         menubar.pack(side='top', fill='x', expand=False)
@@ -213,8 +213,9 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
         menubar.bind_action('Copy', self.on_copy)      
         menubar.bind_action('Cut', self.on_cut)   
         menubar.bind_action('Paste', self.on_paste)
-        menubar.bind_action('Undo', self.on_undo)   
-        menubar.bind_action('Redo', self.on_redo)      
+        menubar.bind_action('DB', self.on_open_db)   
+        menubar.bind_action('ClassView', self.on_class_view)
+        menubar.bind_action('Tester', self.on_open_tester)      
         menubar.bind_action('Add Tab', self.on_add_tab)   
         menubar.bind_action('Remove Tab', self.on_remove_tab)            
         menubar.bind_action('Exec', self.on_exec)
@@ -320,11 +321,32 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
     def on_close_file(self, event=None):
         self.close_file()
         
+    def on_open_db(self, event=None):
+        from aui import TopFrame
+        from DB.dbEditor import CodeFrame
+        frame = TopFrame()    
+        panel = frame.add('panel')
+        panel.pack(fill='both', expand=True)   
+        frame1 = CodeFrame(panel, 'code')
+        frame1.pack(fill='both', expand=True)  
+        
+    def on_open_tester(self, event=None):
+        from aui import TopFrame   
+        from DB.code_tester import Tester        
+        frame = TopFrame()
+        panel = frame.add('panel')
+        panel.pack(fill='both', expand=True) 
+        Tester(panel)   
+        
+    def on_class_view(self, event=None):
+        from aui.ClassTree import class_view
+        class_view()
+        
     def file_dialog(self, dialog, op='Open', mode='r'):
         fn = self.textbox.filename
         if fn == 'noname' or fn == None or fn == '':
             fn = self.vars['history'][-1]
-        filepath = '/link' #os.path.dirname(realpath(fn))        
+        filepath = os.path.dirname(realpath(fn))        
         filename = dialog(defaultextension='.py', mode = mode,
                filetypes = [('Python files', '.py'), ('all files', '.*')],
                initialdir = filepath,
@@ -364,9 +386,13 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
         self.saveas_file(filename)                
                 
     def on_run(self, event=None):
+        sys.stdout = self.msg
+        sys.stderr = self.msg  
         self.do_run_file()
         
     def on_exec(self, event=None):
+        sys.stdout = self.msg
+        sys.stderr = self.msg  
         self.do_exec()
         
     def open_file(self, filename): 
@@ -409,8 +435,9 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
         self.winfo_toplevel().title('TextEditor      ' + filename)    
            
     def load_ini(self):
+        from DB import get_cache
         self.update()        
-        text = db.get_cache('menutext.ini')
+        text = get_cache('menutext.ini')
         dct = eval(text)
         files = dct.get('files', [])        
         lastfile = None       
@@ -441,6 +468,7 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
            self.new_file()
                 
     def save_ini(self):
+        from DB import set_cache
         lst = []
         for s, v in self.files.items():
             fn = v.filename
@@ -454,14 +482,14 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
             n = 15
         dct['history'] = self.vars['history'][0:n]
         text = str(dct)        
-        db.set_cache('menutext.ini', text)
+        set_cache('menutext.ini', text)
             
     def destroy(self):
         try:
            if not self.run_alone:
                self.save_ini()
         except Exception as e:
-           print(e)
+           print('Save ini Exception:', e)
         
 #----------------------------------------------------------------------------------                    	
 def get_filename():
@@ -469,7 +497,7 @@ def get_filename():
     srcpath = os.path.dirname(__file__)
 
     if len(sys.argv) > 1:
-        print(sys.argv)
+        print('sys.argv', sys.argv)
         filename = sys.argv[1]   
         filename = realpath(filename)  
     
@@ -484,7 +512,7 @@ def main():
     root.tk.setvar('appname', 'menutext')
     try:
         filename = get_filename()
-        icon = realpath('~/data/icon/menutext.png')
+        icon = realpath('~/data/icon/moon.png')
         root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=icon))        
     except:
         pass    

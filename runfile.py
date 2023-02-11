@@ -10,6 +10,82 @@ import fileio
 import webbrowser
 from fileio import *
         
+
+class ExecCmd():
+    def __init__(self, textbox, msg):
+        from pygments.lexers import Python3Lexer
+        self.msg = msg
+        self.textbox = textbox
+        self.lexer = Python3Lexer()        
+        self.dct = {'global':globals(), 'local':locals()}
+        self.g_vars = self.dct['global']
+        self.l_vars = self.dct['local']      
+               
+    def eval_print(self, s):
+        r = self.try_eval(s, self.g_vars, self.l_vars)
+        if r != None:
+            self.msg.puts('>>> ' + s, end='')
+            self.msg.puts_tag(  str(r), 'bold')                
+            
+    def exec_text(self, text): 
+        lines = text.splitlines()        
+        n = min(100, len(lines))
+        lst = []
+        for s in lines:             
+            if 'import ' in s:
+                self.try_eval(s, self.g_vars, self.l_vars)   
+            elif s != '':
+                lst.append(s)
+        text = '\n'.join(lst)          
+        self.exec_cmd(text, self.g_vars, self.l_vars)   
+        for s in lst:
+            s1 = s.strip()
+            if s1 in self.g_vars or s1 in self.l_vars:
+                self.eval_print(s1)
+            elif re.match('[\w\s^\=]+\(', s1) and s1[-1] == ')' :
+                self.eval_print(s1)    
+            else:
+                pass   
+        if self.msg.get_text() != '':        
+            self.msg.puts('\n')
+        else:
+            self.msg.puts('>>>')
+        
+    def get_tokens(self, text):
+        dct = {}
+        lst = list(self.lexer.get_tokens(text))
+        for token, content in self.lexer.get_tokens(text):            
+             dct[token] = content  
+             dct[content] = token
+        return dct, lst
+
+    def try_eval(self, s, g_vars, l_vars):             
+        try:
+           if 'import ' in s:
+               r = exec(s, g_vars, l_vars)
+           else:
+               r = eval(s, g_vars, l_vars) 
+           return r
+        except Exception as e:
+           #self.msg.puts(s, e)    
+           pass
+
+    def try_exec(self, s, g_vars, l_vars):
+        try:
+            r = exec(s, g_vars, l_vars)    
+        except Exception as e:
+            self.msg.puts('try_exec1', e)     
+           
+    def exec_cmd(self, s, g_vars, l_vars):
+        if s.strip() == '':
+            return
+        if s.find('print') == 0:
+            s = s[6: -1]
+            self.try_exec(s, g_vars, l_vars)
+        else:
+            self.try_exec(s, g_vars, l_vars)   
+              
+            
 def popen_run(cmds, filepath, server):
     puts = server.puts
     try:
@@ -132,7 +208,7 @@ class RunFile():
             self.start_process(['python3', pypath, path])
             return
         else:
-            self.textbox.on_exec_cmd(event)     
+            self.textbox.on_exec_cmd()     
    
 
 class TestFrame(tk.Frame):
