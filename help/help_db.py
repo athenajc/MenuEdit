@@ -1,9 +1,11 @@
 import os
 import zlib
-from aui.ModuleDB import ModuleDB
+from DB.ModuleDB import ModuleDB
 from helpbox import HelpObj
+import DB
 
 mdb = ModuleDB()  
+db = DB.open('modules')
 
 def get_module_members_list(modules):     
     lst = []
@@ -67,34 +69,36 @@ def save_all_doc():
         obj = HelpObj(m)
         text = obj.render_doc(title='\nPython Library Doc: \n    %s') 
         fwrite(filename, text)
-                
-def create_doc_table():
-    mdb = ModuleDB()
-    db = mdb.get_db() 
-    modules = eval(mdb.getvar('module.default'))    
-    keytypes = {'name':'string', 'doc':'string'} 
+    
+def get_default_modules_doc():
     lst = []
+    modules = eval(db.get_cache('module.default'))    
     for m in modules:
         obj = HelpObj(m)
         text = obj.render_doc(title='\nPython Library Doc: \n    %s')
         ztext = zlib.compress(text.encode())
         data = (obj.name, ztext)
         lst.append(data)
-    #from_list(self, table, keytypes, lst):
-    db.from_list('doc', keytypes, lst)
+    return lst    
+                    
+def create_doc_table():    
+    #db.remove_table('doc')
+    #db.create('doc')
     
-def test_doc():
-    name = 'tkcode'
-    mdb = ModuleDB()
-    db = mdb.get_db() 
-    res = mdb.fetch('Select doc from doc where name = \"%s\"' % name)
-    if res == None or res == []:
-        return False     
-    data = res[0][0]
+    table = db.get_table('doc')
+    lst = get_default_modules_doc()
+    table.add_list(lst)
+    
+def test_doc(name = 'tkcode'): 
+    res = db.getdata('doc', name)
+    data = eval(res)
+    if data in [None, []]:
+        return ''
     text = zlib.decompress(data).decode()
     return text
     
 if __name__ == '__main__':   
-    text = test_doc()
-    print(text)
+    #create_doc_table()
+    print(test_doc())
+    #db.show()
 

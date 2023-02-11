@@ -5,8 +5,6 @@ import subprocess
 import tkinter as tk
 import tkinter.ttk as ttk
 from operator import itemgetter, attrgetter
-from aui import PopMenu
-from aui import Text, TwoFrame
      
 import fileio
 fileio.add_sys_path(('.', '..'))
@@ -15,8 +13,14 @@ from autocombo import AutoCombo
 from get_modules import *        
    
 from xmltree import XmlTree
-from treeview import NodeObj, Notebook, TreeView, ClassTree
+from aui.ClassTree import NodeObj, ClassTree
+from aui import Notebook, TreeView, PopMenu, aFrame
        
+import DB
+from DB import ModuleDB
+from DB.ModuleDB import HelpObj
+
+mdb = ModuleDB()  
 
 #-------------------------------------------------------------------------
 class ModuleTree(TreeView, PopMenu):
@@ -174,7 +178,7 @@ class ModuleTree(TreeView, PopMenu):
     def add_path(self, node, dirpath):
         #print('add_path', node, dirpath)
         if node == '': 
-            lst = get_lst('default_modules')
+            lst = eval(DB.get_cache('modules.default'))
             dct = {'module':lst}   
         else:
             dct = get_module_members(dirpath)    
@@ -188,56 +192,37 @@ class ModuleTree(TreeView, PopMenu):
                 self.data[item] = (head + s, key)       
 
                 
-class ModuleFrame(tk.Frame):
+class ModuleFrame(aFrame):
     def __init__(self, master,  cmd_action=None, cnf={}, **kw):
-        tk.Frame.__init__(self, master)        
-        frame = TwoFrame(self, sep=0.6, type='v')
-        frame.pack(fill='both', expand=True)
-        self.moduletree = ModuleTree(frame.top, cmd_action=cmd_action)
-        self.moduletree.pack(fill='both', expand=True)
+        super().__init__(master)        
+        layout = self.get('layout')
+        self.moduletree = mtree = ModuleTree(self, cmd_action=cmd_action)        
+        self.classtree = classtree = ClassTree(self)
+        layout.add_V2(mtree, classtree, sep=0.6)        
+        classtree.bind_act(cmd_action)
         
-        notebook = Notebook(frame.bottom)
-        notebook.pack(fill='both', expand=True)
-  
-        self.classtree = notebook.add_page('Class', ClassTree, cmd_action)
-        self.textbox = notebook.add_page('Doc', TextObj)
-        self.textbox.config(padx=5)     
-        self.textbox.config(undo=99) 
-        self.textbox.pack(fill='both', expand=True)
-        self.textbox.tag_config('bold', foreground='black', background='#999')
 
 
 
 if __name__ == '__main__':   
-    import aui
-    from aui import Messagebox, TextObj
-    import tkcode
-    class TestFrame(tk.Frame):
-        def __init__(self, master):       
-            tk.Frame.__init__(self, master)
+    from aui import App, aFrame
 
-            frame = TwoFrame(self, type='h', sep=0.4)
-            frame.pack(fill='both', expand=True)
+    class TestFrame(aFrame):
+        def __init__(self, app):       
+            super().__init__(app)
+            self.app = app
+            self.root = app.root
+            self.textbox = text = self.get('text')
+            self.msg = msg = self.get('msg')
+            layout = self.get('layout')                                    
+            treeframe = ModuleFrame(self, cmd_action=self.on_command)
+            layout.add_HV(treeframe, text, msg, sep=(0.3, 0.7))
+            text.msg = msg
+            treeframe.msg = msg         
+            msg.textbox = text           
             
-            frame1 = TwoFrame(frame.right, type='v', sep=0.7)
-            frame1.pack(fill='both', expand=True)
-            self.textbox = TextObj(frame1.top)
-            self.textbox.config(padx=5)     
-            self.textbox.config(undo=99) 
-            self.textbox.pack(fill='both', expand=True)
-            self.textbox.tag_config('bold', foreground='black', background='#999')            
-            
-            msg = Messagebox(frame1.bottom)
-            msg.pack(fill='both', expand=True)
-            statusbar = msg.add_statusbar()
-            self.msg = msg           
-            
-            mainframe = ModuleFrame(frame.left, cmd_action=self.on_command)
-            mainframe.pack(fill='both', expand=True)
-            mainframe.msg = msg         
-            
-            self.moduletree = mainframe.moduletree
-            self.classtree = mainframe.classtree
+            self.moduletree = treeframe.moduletree
+            self.classtree = treeframe.classtree
 
             self.moduletree.bind("<<ModuleSelected>>", self.on_module_selected)
             self.moduletree.bind("<<ClassSelected>>", self.on_class_selected)
@@ -295,16 +280,11 @@ if __name__ == '__main__':
                 self.textbox.tag_add('sel', start, end)
                 
                
-    def main():
-        root = tk.Tk()
-        root.title('Modules TreeView')
-        root.geometry('1200x900') 
-        frame = TestFrame(root)
-        frame.pack(fill='both', expand=True)
-        sys.stdout = frame.msg
-        frame.mainloop()   
+    app = App(title='Modules TreeView', size=(1200, 900))
+    frame = TestFrame(app)
+    frame.pack(fill='both', expand=True)
+    #sys.stdout = frame.msg
+    app.mainloop()   
     
-    main()
-
 
 

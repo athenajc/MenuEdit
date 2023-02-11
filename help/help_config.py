@@ -1,9 +1,9 @@
-default_modules = ['builtins', 'os', 'sys', 're', 'tkinter',  'inspect',                 
-            'pandas', 'pandas.DataFrame', 'sqlite3', 'dict', 'list', 'str',
-            'numpy.ndarray', 'numpy', 'scipy', 'matplotlib',
-            'tkcode', 'json', 'openai', 'pprint', 
-            'pkgutil', 'subprocess',  'skimage', 'gi.repository',
-             'cairo',  'PIL', 'PIL.Image', 'PIL.ImageDraw']
+default_modules = ['builtins', 'os', 'sys', 're', 'tkinter',  
+            'numpy', 'scipy', 'matplotlib', 'sympy', 
+            'dict', 'list', 'str', 'collections',          
+            'pandas', 'sqlite3', 'cairo',  'PIL',              
+            'tkcode', 'json', 'openai', 'pprint', 'inspect',     
+            'pkgutil', 'subprocess',  'skimage', 'gi.repository', ]
              
 name_map_list =  {'ax': 'matplotlib.axes.Axes',
      'box': 'matplotlib.transforms.Bbox',
