@@ -496,7 +496,9 @@ class TextSearch():
             return
         files = self.get_file_list('~/src/aui') 
         for fn in files:
-            text = self.fread(fn)            
+            text = self.fread(fn)         
+            if text == None or text == '':
+                continue   
             lst1 = self.find_in_text(fn, text, key)            
         self.msg.update_tag(key=key)    
             
