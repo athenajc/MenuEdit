@@ -9,7 +9,7 @@ import webbrowser
 import pydoc
 import pathlib
 import zlib
-from aui import TwoFrame
+from aui.aui_ui import TwoFrame
 from aui import PopMenu, TextObj   
 from tk_html_widgets import HTMLLabel, HTMLText, HTMLScrolledText
 from autocombo import AutoCombo 
@@ -53,7 +53,7 @@ class HelpObj(ModuleObj):
         return True
         
     def load_doc_db(self):                 
-        res = mdb.fetch('Select doc from doc where name = \"%s\"' % self.name)
+        res = mdb.fetch('Select data from doc where name = \"%s\"' % self.name)
         if res == None or res == []:
             return False      
         data = res[0][0]

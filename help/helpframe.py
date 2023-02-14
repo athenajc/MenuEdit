@@ -6,8 +6,10 @@ from tkinter import ttk
 import webbrowser
 import pathlib
 
-from aui import TwoFrame
-from aui import PopMenu, TextObj, Messagebox   
+from aui.aui_ui import TwoFrame
+from aui.Menu import PopMenu
+from aui.TextObj import TextObj
+from aui.Messagebox import Messagebox   
 from msgbox import HelpMsgBox  
 from help_config import default_modules, name_map_list
 from autocombo import AutoCombo 
