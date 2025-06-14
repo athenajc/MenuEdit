@@ -285,7 +285,7 @@ if __name__ == '__main__':
         frame.set_obj('pydoc list')
         frame.pack(fill='both', expand=True)
         frame.mainloop()   
-    from fileio import *
+    from DB.fileio import *
     add_sys_path([realpath('..')])
 
     #from mainframe import main

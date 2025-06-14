@@ -90,7 +90,7 @@ class TextObj(tk.Text):
         if type(p) == int:
             p = str(p)
         elif type(p) == str:
-           m = re.search('\d+', p)
+           m = re.search(r'\d+', p)
            if m == None:
                return
            p = m.group(0)
@@ -162,7 +162,7 @@ class TextObj(tk.Text):
     def get_word(self, idx='insert'):
         i, j = self.get_pos(idx)
         text = self.get_line_text(i)
-        for m in re.finditer('\w+', text):
+        for m in re.finditer(r'\w+', text):
             if j >= m.start() and j <= m.end():
                 return m.group(0)
         return ''
@@ -271,7 +271,7 @@ class Messagebox(tk.Frame):
         self.bind_cmd('time', self.cmd_time)
         self.locals = {}
         self.globals = {}
-        self.cmdlist = ['dir self | grep scr\w+']
+        self.cmdlist = [r'dir self | grep scr\w+']
         
     def add_statusbar(self):
         self.textobj.config(height=5)
@@ -314,7 +314,7 @@ class Messagebox(tk.Frame):
  
     def find_defines(self, text):
         textlines = text.splitlines()    
-        for m in re.finditer('(?P<key>class|def)\s*(?P<name>\w+)\s*\(.*:', text):
+        for m in re.finditer(r'(?P<key>class|def)\s*(?P<name>\w+)\s*\(.*:', text):
             s, e = m.start(), m.end()     
             name = m.group('name')
             i = text[:s].count('\n')           
@@ -502,14 +502,14 @@ class Messagebox(tk.Frame):
         text = self.get_line_text(idx).strip()  
         m = None
         if '.py\"' in text:
-           m = re.search('\"[\w\/\s\.\-\_\d]+\"', text)      
+           m = re.search(r'\"[\w\/\s\.\-\_\d]+\"', text)      
            if m != None:            
               filename = m.group(0).replace('\"', '')
               print(filename)
               self.action('gotofile', filename) 
               text = text.split('.py', 1)[1]           
         elif '.py' in text:      
-           m = re.match('[\w\/\s\.\-\_\d]+\:', text)      
+           m = re.match(r'[\w\/\s\.\-\_\d]+\:', text)      
            if m != None:            
               filename = m.group(0).replace(':', '')
               self.action('gotofile', filename) 
@@ -519,7 +519,7 @@ class Messagebox(tk.Frame):
             self.cmd_find(s)
             return        
             
-        m1 = re.search('(?P<line>\d+)', text) 
+        m1 = re.search(r'(?P<line>\d+)', text) 
         if m1 != None:           
            if m != None:
               self.action('gotoline', m1.group('line'))

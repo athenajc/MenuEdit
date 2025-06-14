@@ -1,8 +1,8 @@
 import os
 import sys
 
-from ModuleDB import ModuleDB
-from SqlDB import CacheDB
+from DB import ModuleDB
+from DB import CacheDB
 from pprint import pprint, pformat
 import re
 import pygments
@@ -12,7 +12,7 @@ from pathlib import Path
 from collections import Counter, ChainMap
 from dataclasses import dataclass
 
-from fileio import fread, fwrite, walkdir
+from DB.fileio import *
 import aui
 from aui import *
 
@@ -42,7 +42,7 @@ def grep_key(fn, key):
     if not key in text:
         return []
         
-    lst = re.findall('[\w\_]+%s[\w\_]+' %key, text)
+    lst = re.findall(r'[\w\_]+%s[\w\_]+' %key, text)
     print(lst)
     return lst
     
@@ -65,11 +65,11 @@ def grep(fn):
     if 0:
         dct = {}    
         dct['file'] = str(fn)
-        dct['class'] = re.findall('(?<=class\s)\s*[\w\_]+', text)
-        dct['def'] = re.findall('(?<=def\s)\s*[\w\_]+', text)
-        dct['counter'] = dict(Counter(re.findall('[\w\_]{3,128}', text)))
+        dct['class'] = re.findall(r'(?<=class\s)\s*[\w\_]+', text)
+        dct['def'] = re.findall(r'(?<=def\s)\s*[\w\_]+', text)
+        dct['counter'] = dict(Counter(re.findall(r'[\w\_]{3,128}', text)))
     #pprint(dct)
-    return Counter(re.findall('[\w\_]{3,128}', text))
+    return Counter(re.findall(r'[\w\_]{3,128}', text))
     
 def grep_tuple(fn):
     try:
@@ -78,9 +78,9 @@ def grep_tuple(fn):
        return []
     dct = {}
     dct['files'] = str(fn)
-    dct['class'] = re.findall('(?<=class\s)\s*[\w\_]+', text)
-    dct['def'] = re.findall('(?<=def\s)\s*[\w\_]+', text)
-    words = re.findall('[a-zA-Z][\w\_]{2,64}', text)
+    dct['class'] = re.findall(r'(?<=class\s)\s*[\w\_]+', text)
+    dct['def'] = re.findall(r'(?<=def\s)\s*[\w\_]+', text)
+    words = re.findall(r'[a-zA-Z][\w\_]{2,64}', text)
     dct['words'] = list(set(words))
 
     lst = []    
@@ -94,12 +94,12 @@ def grep_tuple(fn):
     
 def gen_file_index_data(index):
     #path = '/usr/lib/python3.8/lib2to3'
-    db = SqlDB("/home/athena/data/test1.db") 
+    db = SqlDB("test1.db") 
     keytypes = {'file':'string', 'class':'text', 'def':'text', 'words':'text'} 
     if index == 0:
-        path = '/usr/lib/python3.8'
+        path = sys.path[-2]
     else:    
-        path = '/home/athena/.local/lib/python3.8/site-packages'
+        path = sys.path[-1]
         
     datalist = []
     flst = walkdir(path)
@@ -123,17 +123,17 @@ def grep1(fn):
        text = fread(fn)
     except:
        return []
-    return re.findall('[\w\_]{3,128}', text)
+    return re.findall(r'[\w\_]{3,128}', text)
 
 def store_filelist():
-    path0 = '/usr/lib/python3.8'
-    path1 = '/home/athena/.local/lib/python3.8/site-packages'        
+    path0 = sys.path[-1]
+    #path1 = sys.path[-2]      
     lst = []
 
-    flst = walkdir(path0) + walkdir(path1)
+    flst = walkdir(path0) #+ walkdir(path1)
     
     
-    fwrite('/home/athena/data/pyfile.list', str(flst))
+    fwrite(get_path('data') + '/pyfile.list', str(flst))
     return 
         
 def test():
@@ -152,7 +152,7 @@ def test():
     #text = pformat(dct)
     datalist = [(k,v) for k,v in dct.items()]
     keytypes = {'word':'string', 'counter':'integer'} 
-    db = SqlDB("/home/athena/data/test1.db") 
+    db = SqlDB("test1.db") 
     db.from_list('word_count', keytypes, datalist)
     #fwrite('/home/athena/tmp/counter.json', text)
 

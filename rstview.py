@@ -290,7 +290,7 @@ class RstView(tk.Frame):
         
 #----------------------------------------------------------------------------------      
 if __name__ == '__main__':   
-    from fileio import fread
+    from DB.fileio import fread
     
     class Frame(tk.Frame):    
         def __init__(self, master, filename=None, **kw):

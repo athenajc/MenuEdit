@@ -7,9 +7,22 @@ from subprocess import Popen, PIPE
 import time
 from aui import MenuBar, TwoFrame, TextObj
 import fileio
-import webbrowser
-from fileio import *
-        
+
+
+def add_subdir_to_sys_path(parent_dir):
+    """Adds all subdirectories of a given directory to sys.path."""
+    for item in os.listdir(parent_dir):
+        item_path = os.path.join(parent_dir, item)
+        if os.path.isdir(item_path) and not "__" in item_path and not item_path in sys.path:
+
+            for fn in os.listdir(item_path):
+                if '.py' in fn:
+                    sys.path.insert(0, item_path)
+                    #print(item_path)
+                    break
+    if not parent_dir in sys.path:
+        sys.path.insert(0, parent_dir)
+            
 
 class ExecCmd():
     def __init__(self, textbox, msg):
@@ -42,7 +55,7 @@ class ExecCmd():
             s1 = s.strip()
             if s1 in self.g_vars or s1 in self.l_vars:
                 self.eval_print(s1)
-            elif re.match('[\w\s^\=]+\(', s1) and s1[-1] == ')' :
+            elif re.match(r'[\w\s^\=]+\(', s1) and s1[-1] == ')' :
                 self.eval_print(s1)    
             else:
                 pass   
@@ -126,7 +139,10 @@ class RunServer():
         path = os.path.dirname(fn)
         os.chdir(path) 
         if '.py' in fn:
-            cmds = ['/usr/bin/python3', fn]
+            add_subdir_to_sys_path(path)
+            cmds = [sys.executable,  fn]
+            #cmds = ['/home/athena/.local/bin/uv', 'run', fn]
+            #cmds = ['uv', 'run', fn]
             arg = fn
         elif '.go' in fn:
             cmds = ['/usr/bin/go', 'run', fn]
@@ -168,6 +184,7 @@ class RunFile():
             self.start_process(['lua', path]) 
             
     def check_file(self):
+        from DB.fileio import realpath
         text = self.textbox.get_text()       
         filename = self.textbox.filename     
         if filename == 'noname':
@@ -249,9 +266,9 @@ def test_app(filename):
     app.mainloop()
 
 if __name__ == '__main__':  
-    fn = '/home/athena/tmp/test_run.py' 
-    fn = '/home/athena/src/menutext/get_functions.py'
-    fn = '/home/athena/tmp/hello.go'
+    fn = '/home/athena/tmp/ver.py' 
+    print(sys.path)
+    print(sys.executable)
     test_app(fn)
     
     

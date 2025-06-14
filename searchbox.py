@@ -4,7 +4,7 @@ from tkinter import ttk
 from aui import Messagebox, aFrame, TextObj, TextSearch
 from texteditor import TextEditor
 import re
-from fileio import *
+from DB.fileio import *
     
 
 class WordBox(TextObj):

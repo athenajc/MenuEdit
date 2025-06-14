@@ -7,9 +7,9 @@ import inspect
 import pkgutil
 from help_config import default_modules, name_map_list
 from get_modules import *
-from fileio import *
+from DB.fileio import *
 from pprint import pprint
-from aui import SqlDB
+from DB import SqlDB
 import pandas as pd
 import numpy as np
 
@@ -122,11 +122,13 @@ def test_get_func_args():
        # arg = inspect.getargs(obj)
        # print(arg)
        
+       
+pth = get_path('data')    
 
 def func_list_to_db():
     lst = get_lst('modules')
     func_lst = get_all_function_list(lst)
-    db = SqlDB("/home/athena/data/help/func.db")
+    db = SqlDB("func")
     keytypes = {'path':'string', 'name':'string', 'module':'string'} 
     db.from_list('func', keytypes, func_lst)                                          
     db.close()
@@ -141,13 +143,13 @@ def fetchset(db, table, key, order=''):
     return a
     
 def func_namelist_to_db():
-    db = SqlDB("/home/athena/data/help/func.db")
+    db = SqlDB( "func")
     lst = db.fetchall('SELECT COUNT(path), name FROM func GROUP BY name ORDER BY COUNT(path) DESC')     
     # GROUP BY name, ORDER BY name
     pprint(lst[0:10])
     pprint(lst[-10:])   
     return lst
-    db = SqlDB("/home/athena/data/help/funcmap.db")
+    db = SqlDB("funcmap")
     #(objname, name, func.__code__.co_varnames, func.__defaults__, func.__doc__)
     #keytypes = {'path':'string', 'name':'string', 'args':'string', 'defaults':'string', 'doc':'string'}
     keytypes = {'name':'string', 'path':'string'} 
@@ -158,7 +160,7 @@ def func_namelist_to_db():
     
 if __name__ == '__main__': 
     #test_get_func_args()
-    if 0:
+    if 1:
         func_list_to_db()
     #query_func_from_db('tag_a')    
     func_namelist_to_db()

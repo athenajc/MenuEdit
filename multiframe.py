@@ -6,7 +6,7 @@ import inspect
 import subprocess
 import tkinter as tk
 from tkinter import filedialog
-from textbox import TextBox
+from textbox import TextBox, ScrollText
 from messagebox import Messagebox
 
 class TwoFrame(tk.Frame):
@@ -327,7 +327,8 @@ class MultiTextFrame(tk.Frame):
         labeltext = os.path.split(filename)[-1]
         objname = filename
         widget = self.multiframe.add_frame(objname, labeltext, widgetclass)
-        widget.set_root(self.root)
+        print(widget)
+        #widget.set_root(self.root)
         widget.filename = filename
         self.textobj[filename] = widget        
         self.switch_to(widget, filename)
@@ -362,6 +363,14 @@ class MultiTextFrame(tk.Frame):
             return None
         return filename.name
         
+    def read_file(self, textbox, fn):
+        if os.path.exists(fn) == False:
+           return
+        fp = open(fn)   
+        text = fp.read()
+        textbox.set_filename(fn)
+        textbox.set_text(text)
+        
     def open_file(self, filename): 
         if len(self.textobj) >= 6:
             self.msg.puts('File count %d : Open too much!' % len(self.textobj) )
@@ -371,8 +380,10 @@ class MultiTextFrame(tk.Frame):
             textframe = self.on_switch_frame(filename)
             self.multiframe.switch_to(filename)
             return textframe        
-        textframe = self.add_fileframe(filename, TextBox) 
-        textframe.open_file(filename)  
+        textframe = self.add_fileframe(filename, ScrollText) 
+        #print(textframe.textbox)
+        #textframe.open_file(filename)  
+        self.read_file(textframe, filename)
         self.switch_to(textframe, filename)
         return textframe       
         
@@ -547,7 +558,8 @@ if __name__ == '__main__':
         root.geometry('1200x900')
         test_multiframe(root, filename)    
 
-    os.chdir('/home/athena/src/py')
-    main('/home/athena/src/py/tmp/t.py')
+    pth = os.path.expanduser('~') + '/tmp'
+    os.chdir(pth)
+    main(pth + '/ver.py')
 
 

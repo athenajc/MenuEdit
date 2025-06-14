@@ -10,26 +10,26 @@ from textui import PopMenu, TextLinebar
      
 class TextToken():     
     def init_py(self):
-        pint = '(?<![\w])(?P<int>(0x[\dabcdefABCDEF]+)|([\d\.\+\-]+))'
-        pint1 = '(?P<int>\d[\d\.e]*)'
-        p = '(?P<ln>\n+)|%s|(?P<word>[\w]+)|(?P<comments>\#[^\n]*)|' % pint
-        p += '(?P<str2>\"[^\"]*\")|(?P<str1>\'[^\']*\')|(?P<op>[\=\+\-\*\/\(\)\.\%\,])'
-        p += '|(?<=class)\s(?P<classname>\w+)'
+        pint = r'(?<![\w])(?P<int>(0x[\dabcdefABCDEF]+)|([\d\.\+\-]+))'
+        pint1 = r'(?P<int>\d[\d\.e]*)'
+        p = r'(?P<ln>\n+)|%s|(?P<word>[\w]+)|(?P<comments>\#[^\n]*)|' % pint
+        p += r'(?P<str2>\"[^\"]*\")|(?P<str1>\'[^\']*\')|(?P<op>[\=\+\-\*\/\(\)\.\%\,])'
+        p += r'|(?<=class)\s(?P<classname>\w+)'
         self.pattern = re.compile(p)    
             
         keys = 'from|import|def|class|if|else|elif|for|in|then|dict|list|continue|return'
         keys += '|None|True|False|while|break|pass|with|as|try|except|not|or|and|do|const|local'
-        p1 = pint + '|(?P<key>^%s)' % keys
+        p1 = pint + r'|(?P<key>^%s)' % keys
         self.pattern1 = re.compile(p1)  
         
     def init_txt(self):        
-        p = '(?P<title>^[A-Z][A-Z\s\-\_\:]+)|(?P<function>\w+)\s*(?=\()|(?P<colon>\w.+\:)'
-        p += '|(?P<str1>\'[^\']*\')|(?P<str2>\"[^\"]*\")|(?P<word>[\w]+)'  
+        p = r'(?P<title>^[A-Z][A-Z\s\-\_\:]+)|(?P<function>\w+)\s*(?=\()|(?P<colon>\w.+\:)'
+        p += r'|(?P<str1>\'[^\']*\')|(?P<str2>\"[^\"]*\")|(?P<word>[\w]+)'  
         self.pattern = re.compile(p)
         
-        keys = 'Class|NAME|DESCRIPTION|PACKAGE\sCONTENTS|CLASSES|Function|Help\son'
+        keys = r'Class|NAME|DESCRIPTION|PACKAGE\sCONTENTS|CLASSES|Function|Help\son'
         keys = keys.split('|')
-        p1 = '(?<![\w])(?P<int>[\d\.\+\-]+)|(?P<helpon>^%s)' % keys
+        p1 = r'(?<![\w])(?P<int>[\d\.\+\-]+)|(?P<helpon>^%s)' % keys
         self.pattern1 = re.compile(p1)  
             
     def init_pattern(self):
@@ -247,7 +247,7 @@ class TextBoxText():
         if type(idx) == int:
             return idx
         if type(idx) == str:
-            if re.fullmatch('\d+', idx) != None:
+            if re.fullmatch(r'\d+', idx) != None:
                return int(idx)
             idx = self.index(idx)
         idx = self.index(idx).split('.')[0]
@@ -270,7 +270,7 @@ class TextBoxText():
         
     def get_current_word(self):
         text = self.get('insert wordstart')  
-        m = re.search('\w+', text)
+        m = re.search(r'\w+', text)
         if m != None:        
            return m.group(0)
         return ''
@@ -598,7 +598,7 @@ class TextBox(tk.Text, TextToken, TextBoxEdit, TextBoxText, PopMenu):
         self.l_vars = locals()           
              
         cmds = [('Find', self.on_find_text),
-                ('Goto Define', self.on_goto_define),
+                #('Goto Define', self.on_goto_define),
                 ('Find in files', self.on_find_files),
                 ('Help', self.on_search_help),
                 ('Google Search', self.on_google_search),
@@ -858,7 +858,7 @@ class ScrollText(TextBox):
 
     def goto_define(self, key):      
         text = self.get_text()  
-        pattern = '(class|def)\s+(%s)\s*\(|(%s)\s+\=' % (key, key)
+        pattern = r'(class|def)\s+(%s)\s*\(|(%s)\s+\=' % (key, key)
         m = re.search(pattern, text)
         if m != None:
             idx = self.search(m.group(0), '1.0')
@@ -875,7 +875,7 @@ class ScrollText(TextBox):
 
     def search_define(self, key):    
         text = self.get_text()  
-        pattern = '(class|def)\s+(%s)\s*\(' % key 
+        pattern = r'(class|def)\s+(%s)\s*\(' % key 
         m = re.search(pattern, text)
         if m != None:
             self.goto(self.search(m.group(0), '1.0'))   
@@ -909,7 +909,7 @@ class ScrollText(TextBox):
         
 #---------------------------------------------------------------------------------- 
 def test_textbox(filename='', TextBox=ScrollText):
-    from ui import Messagebox, TwoFrame
+    from aui import Messagebox, TwoFrame
     from fileio import fread
     root = tk.Tk()
     root.title('TextEditor')
@@ -917,7 +917,7 @@ def test_textbox(filename='', TextBox=ScrollText):
     frame = TwoFrame(root, type='v', sep=0.7)
     frame.pack(fill='both', expand=True)  
     
-    textbox = TextBox(frame.top)
+    textbox = ScrollText(frame.top)
     textbox.pack(fill='both', expand=True)
     
     msg = Messagebox(frame.bottom)        
@@ -957,8 +957,8 @@ def test_textbox(filename='', TextBox=ScrollText):
         
 #----------------------------------------------------------------------------------      
 if __name__ == '__main__':   
-    #fn = __file__      
-    fn = '/home/athena/src/py/test/textedit/test_sample.py'
+    fn = __file__      
+    #fn = '/home/athena/tmp/ver.py'
     #fn = '/home/athena/src/help/test.rst'
     test_textbox(fn)          
         

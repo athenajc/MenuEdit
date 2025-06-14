@@ -5,8 +5,7 @@ import subprocess
 import tkinter as tk
 import tkinter.ttk as ttk
 from operator import itemgetter, attrgetter
-     
-import fileio
+
 fileio.add_sys_path(('.', '..'))
 from autocombo import AutoCombo
 

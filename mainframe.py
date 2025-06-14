@@ -13,8 +13,9 @@ from help import HelpFrame
 from treeview import SideNotebook
 from texteditor import TextEditor
 from textui import FrameLayout, PopMenu, MenuBar
-from fileio import *
+from DB.fileio import *
 from runfile import RunFile   
+from pprint import pprint
     
           
 class TextNotebook():
@@ -92,7 +93,7 @@ class TextNotebook():
         notebook.bind('<ButtonRelease-1>', self.switch_frame)
         
     def new_file(self):
-        self.add_textframe('/home/athena/tmp/noname.py', '\n' * 10)
+        self.add_textframe('~/tmp/noname.py', '\n' * 10)
         
     def close_file(self):
         tab_id = self.notebook.index('current')
@@ -437,11 +438,17 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
     def load_ini(self):
         from DB import get_cache
         self.update()        
+
         text = get_cache('menutext.ini')
         dct = eval(text)
-        files = dct.get('files', [])        
+
+        if type(dct) != dict:
+            dct = {'history':[]}
+        files = dct.get('files', [])       
+        pprint(files)
+         
         lastfile = None       
-        self.vars['history'] = history = dct.get('history')                
+        self.vars['history'] = history = dct.get('history', [])                
         for fn in history:
             self.fav_dir_tree.add_file(fn)            
             path = fn.rsplit(os.sep, 1)[0]
@@ -449,7 +456,7 @@ class MenuTextFrame(tk.Frame, FrameLayout, TextNotebook, RunFile):
         if not (self.filename == None or self.filename == ''):
            files.append(self.filename)    
         for filename in files:
-           filename = realpath(filename)
+           filename = os.path.realpath(filename)
            if os.path.exists(filename) == False:
               self.msg.puts(filename + ' not exists.')
               continue
@@ -512,7 +519,7 @@ def main():
     root.tk.setvar('appname', 'menutext')
     try:
         filename = get_filename()
-        icon = realpath('~/data/icon/moon.png')
+        icon = realpath(get_path('data') + '/icon/Notes.png')
         root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=icon))        
     except:
         pass    

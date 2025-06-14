@@ -60,7 +60,7 @@ def test():
     
 def save_all_doc():
     db = ModuleDB()
-    path = '/home/athena/data/help/'
+    path = get_path('data') + '/help/'
     for m in db.get_modules():
         filename = path + m + '.txt'
         if os.path.exists(filename):

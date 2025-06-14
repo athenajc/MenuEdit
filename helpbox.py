@@ -8,24 +8,19 @@ from tkinter import ttk
 import importlib
 import webbrowser
 
-import PyQt5
-from PyQt5 import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtWebEngineWidgets import *
-
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('GtkSource', '3.0')
-gi.require_version('WebKit2', '4.0')
+gi.require_version('WebKit2', '4.1')
 from gi.repository import Gtk, Pango, GtkSource, GLib, GObject, Gio, Gdk, GdkPixbuf
 from gi.repository import WebKit2
+
 import numpy
 import subprocess
 import pkgutil
 from multiframe import TwoFrame
-from textui import PopMenu, TextObj               
+from textui import PopMenu, TextObj      
+from DB.fileio import get_path         
         
 class MsgBox(TextObj, PopMenu):
     def __init__(self, master, **kw):
@@ -53,7 +48,7 @@ class MsgBox(TextObj, PopMenu):
     def on_doubleclick(self):
         idx = self.index('insert')
         text = self.get_line_text(idx).strip()
-        m = re.search('(?P<line>\d+)\s', text) 
+        m = re.search(re.escapt(r'(?P<line>\d+)\s'), text) 
         if m != None:            
             self.get_textbox(['goto', m.group('line')])
                 
@@ -95,7 +90,7 @@ class MsgBox(TextObj, PopMenu):
     def cmd_goto(self, arg=None):
         if arg == None:
             text = self.get_line_text()
-            lst = re.findall('\s\d+\s', text)
+            lst = re.findall(r'\s\d+\s', text)
             if lst == []:
                 arg = self.get_word()
             else:
@@ -121,8 +116,9 @@ class HelpBox(TextObj, PopMenu):
         TextObj.__init__(self, master, **kw) 
         self.module_list = []
         self.default_list = ['builtins', 'os', 'sys', 're', 'tkinter', 'gi.repository', 'inspect', 
-            'pkgutil', 'subprocess', 'numpy', 'scipy', 'matplotlib', 'skimage', 'cairo', 'PyQt5', 'PIL', 'PIL.Image', 'PIL.ImageDraw']
+            'pkgutil', 'subprocess', 'numpy', 'scipy', 'matplotlib', 'skimage', 'cairo', 'PIL', 'PIL.Image', 'PIL.ImageDraw']
         self.sys_module_list = list(sys.modules.keys())
+        self.objname = None
         self.pkg_iter_modules()
         self.init_pattern()
         self.init_config()
@@ -139,10 +135,10 @@ class HelpBox(TextObj, PopMenu):
             self.on_open_module()
     
     def init_pattern(self):
-        p = '(?P<title>[A-Z\s\-\_\:]+)|(?P<function>\w+)(?=\()' 
-        p += '|(?P<helpon>Help on .*\:)|(?P<colon>\w.+\:)'
+        p = r'(?P<title>[A-Z\s\-\_\:]+)|(?P<function>\w+)(?=\()' 
+        p += r'|(?P<helpon>Help on .*\:)|(?P<colon>\w.+\:)'
         self.pattern = re.compile(p)   
-        p = '(?P<title>^[A-Z][A-Z\s\-\_\:]+)|(?P<function>\w+)\s*(?=\()|(?P<colon>\w.+\:)'
+        p = r'(?P<title>^[A-Z][A-Z\s\-\_\:]+)|(?P<function>\w+)\s*(?=\()|(?P<colon>\w.+\:)'
         self.help_pattern = re.compile(p)                    
         
     def init_config(self):
@@ -184,7 +180,7 @@ class HelpBox(TextObj, PopMenu):
         text = self.get_text('sel')
         if text == None:
             return        
-        elif re.match('[\w\.]+', text) != None:
+        elif re.match(r'[\w\.]+', text) != None:
             head = self.entry_obj.get()
             if head != '':
                 text = head + '.' + text
@@ -386,7 +382,7 @@ class HelpBox(TextObj, PopMenu):
         if objname == '':            
             self.print_module_list()
             return                    
-        obj_filename = '/home/athena/src/help/text/%s.txt' % objname
+        obj_filename = get_path('data') + '/help/%s.txt' % objname
         if os.path.exists(obj_filename):
             text = self.fread(obj_filename)
             self.puts(text)
@@ -417,9 +413,7 @@ class HelpBox(TextObj, PopMenu):
                     objname = p[1]                
             elif objname in self.module_list:
                 return objname
-            elif objname[0] == 'Q':
-                modules = ['PyQt5']
-            elif objname in ['Gtk', 'GObject', 'GtkSource', 'Pango', 'WebKit2', 'GLib', 'Gio', 'Gdk', 'GdkPixbuf']:
+            elif objname in ['Gtk', 'GObject', 'GtkSource', 'Pango',  'GLib', 'Gio', 'Gdk', 'GdkPixbuf']:
                 return 'gi.repository.' + objname
             else:
                 modules = self.default_list                
@@ -489,9 +483,11 @@ class HelpFrame(tk.Frame, PopMenu):
         self.msg = msgbox        
         msgbox.textbox = textbox
         self.entry_obj = entry_obj
+        
         self.entry_find = entry_find
         self.textbox = textbox
         self.helpbox = textbox
+        self.textbox.entry_obj = entry_obj
         self.set_obj('')
         button_back.bind('<ButtonRelease-1>', self.on_button_back)
         button_find.bind('<ButtonRelease-1>', self.on_button_find)    

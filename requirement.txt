@@ -1,0 +1,10 @@
+pygments
+xmltree
+numpy
+pycairo 
+PyGObject
+pandas
+urllib3
+pillow
+matplotlib
+cairosvg

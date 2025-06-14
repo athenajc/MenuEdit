@@ -11,7 +11,7 @@ import pygments
 from pygments.lexers import Python3Lexer
 from pygments.formatters import HtmlFormatter
 from textui import PopMenu, TextLinebar, TextObj
-from fileio import *
+from DB.fileio import *
 from codestyle import codestyle
 import time
 from runfile import ExecCmd
@@ -309,7 +309,7 @@ class TextUtils():
         
     def get_current_word(self):
         text = self.get('insert wordstart')  
-        m = re.search('\w+', text)
+        m = re.search(r'\w+', text)
         if m != None:        
            return m.group(0)
         return ''
@@ -504,7 +504,7 @@ class TextSearch():
             
     def goto_define(self, key):      
         text = self.get_text()  
-        pattern = '(class|def)\s+(%s)\s*\(|(%s)\s+\=' % (key, key)
+        pattern = r'(class|def)\s+(%s)\s*\(|(%s)\s+\=' % (key, key)
         m = re.search(pattern, text)
         if m != None:
             idx = self.search(m.group(0), '1.0')
@@ -521,7 +521,7 @@ class TextSearch():
 
     def search_define(self, key):    
         text = self.get_text()  
-        pattern = '(class|def)\s+(%s)\s*\(' % key 
+        pattern = r'(class|def)\s+(%s)\s*\(' % key 
         m = re.search(pattern, text)
         if m != None:
             self.goto(self.search(m.group(0), '1.0'))   
@@ -766,7 +766,7 @@ if __name__ == '__main__':
         textbox.msg = msg
         textbox.pack(fill='both', expand=True)
         #fn = '~/tmp/test.py'
-        fn = '/home/athena/tmp/der_t1.py'
+        fn = '/home/athena/tmp/ver.py'
         
         tree.set_path('.')
         textbox.open(fn)

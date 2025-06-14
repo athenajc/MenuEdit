@@ -1,6 +1,6 @@
 import tkinter as tk
 import re
-import tkcode
+
 
 #----------------------------------------------------------------------------------
 class MenuBar(tk.Frame):
@@ -358,8 +358,8 @@ class FrameLayout():
       
 
 def test_textobj():               
-    from ui import TwoFrame, MsgBox
-    from fileio import fread
+    from DB.fileio import fread
+    from aui import TwoFrame, Messagebox
     root = tk.Tk()
     root.title('TextEditor')
     root.geometry('800x900')    
@@ -367,7 +367,7 @@ def test_textobj():
     frame.pack(fill='both', expand=True) 
     textobj = TextObj(frame.top)
     textobj.pack(fill='both', expand=True)
-    msg = MsgBox(frame.bottom)
+    msg = Messagebox(frame.bottom)
     msg.pack(fill='both', expand=True)        
     textobj.msg = msg
     text = fread(__file__)  

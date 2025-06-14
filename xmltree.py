@@ -40,7 +40,7 @@ class TagObj(object):
     
     def get_content(self, text):
         dct = {}
-        for m in re.finditer('(?P<item>[\w\.\:\/\-\#]+)\s*\=\s*\"(?P<value>[^\"]+)\"', text):    
+        for m in re.finditer(r'(?P<item>[\w\.\:\/\-\#]+)\s*\=\s*\"(?P<value>[^\"]+)\"', text):    
             item, value = m.group('item'), m.group('value')     
             if ':' in item:
                 item = item.split(':')[-1].strip()       
@@ -87,11 +87,11 @@ class XmlTree(object):
         self.tagends = []            
         tagobjs = []        
         #text = text.replace('\n', '')
-        p1 = '(\<(?P<tag>[\w\:\-\_]+))'
-        p2 = '((?P<content>[^\>]*)\>)'
-        p3 = '((?P<tagend>\<\/[\w\:\-\_]+)\>)'
-        pattern = '(%s\s*%s)|%s' % (p1, p2, p3)
-        p0 = '\<[^\>]+\>'
+        p1 = r'(\<(?P<tag>[\w\:\-\_]+))'
+        p2 = r'((?P<content>[^\>]*)\>)'
+        p3 = r'((?P<tagend>\<\/[\w\:\-\_]+)\>)'
+        pattern = r'(%s\s*%s)|%s' % (p1, p2, p3)
+        p0 = r'\<[^\>]+\>'
         for m in re.finditer(pattern, text): 
             tag = m.group('tag')
             if tag == None:
@@ -119,7 +119,7 @@ if __name__ == '__main__':
         root.geometry('500x900') 
         frame = TestFrame(root)
         frame.pack(fill='both', expand=True)
-        frame.on_select_file('/home/athena/src/svg/3depict.svg', '')
+        frame.on_select_file(get_path('image') +'/svg/3depict.svg', '')
         frame.set_path('/home/athena/src/svg')
         frame.mainloop()   
     

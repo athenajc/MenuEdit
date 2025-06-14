@@ -11,7 +11,7 @@ import pathlib
 import zlib
 from aui.aui_ui import TwoFrame
 from aui import PopMenu, TextObj   
-from tk_html_widgets import HTMLLabel, HTMLText, HTMLScrolledText
+#from tk_html_widgets import HTMLLabel, HTMLText, HTMLScrolledText
 from autocombo import AutoCombo 
 from DB.ModuleDB import *    
 from pprint import pprint, pformat

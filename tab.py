@@ -64,10 +64,12 @@ if __name__ == '__main__':
     class TextBox1(TextBox, TextTab):
         def __init__(self, master, **kw):
             TextBox.__init__(self, master, **kw)        
-            self.bind('<Tab>', self.on_add_tab)        
+            self.bind('<Tab>', self.on_add_tab)       
+        def update_line_index(self):
+            pass 
                 
     def main():               
-        os.chdir('/home/athena/src/menutext')
+        #os.chdir('/home/athena/src/MenuEdit')
         root = tk.Tk()
         root.title('TextEditor')
         root.geometry('800x900')    
